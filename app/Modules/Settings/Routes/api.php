@@ -7,7 +7,7 @@ use App\Modules\Settings\Controllers\DeviseController;
 use App\Modules\Settings\Controllers\MonetaireController;
 use App\Modules\Settings\Controllers\PartenaireController;
 
-Route::middleware('auth:sanctum')->prefix('settings/')->group(function () {
+Route::middleware('auth:sanctum')->prefix('v1/settings/')->group(function () {
     Route::apiResource('clients', ClientController::class);
      Route::apiResource('partenaires', PartenaireController::class);
      Route::apiResource('devises', DeviseController::class);
