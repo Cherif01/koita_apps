@@ -17,7 +17,24 @@ class BarreResource extends JsonResource
             'status' => $this->status,
             'is_fixed' => $this->is_fixed,
 
-            'achat' => $this->achat ? new AchatResource($this->achat) : null,
+            'achat' => $this->achat ? [
+                'id' => $this->achat->id,
+                'reference' => $this->achat->reference,
+                'fournisseur' => [
+                    'id' => $this->achat->fournisseur->id,
+                    'name' => $this->achat->fournisseur->name,
+                    'adresse' => $this->achat->fournisseur->adresse ?? null,
+                    'telephone' => $this->achat->fournisseur->telephone,
+                ],
+                'lot' => [
+                    'id' => $this->achat->lot->id,
+                    'libelle' => $this->achat->lot->libelle,
+                    'commentaire' => $this->achat->lot->commentaire ?? null,
+                    'lot_status' => $this->achat->lot->status ?? null,
+                ],
+                'commentaire' => $this->achat->commentaire ?? null,
+                'achat_status' => $this->achat->status,
+            ] : null,
 
             'createdBy' => $this->createdBy ? [
                 'id' => $this->createdBy->id,

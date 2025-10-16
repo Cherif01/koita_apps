@@ -26,7 +26,7 @@ class AchatResource extends JsonResource
                     'name' => $this->fournisseur->name,
                     'adresse' => $this->fournisseur->adresse,
                     'telephone' => $this->fournisseur->telephone,
-                    'image' => $this->fournisseur->image,
+                    'image' => is_null($this->fournisseur->image) ? asset('/images/male.jpg') : asset('/storage/images/fournisseurs/'.$this->fournisseur->image),
                 ];
             }),
 
@@ -41,9 +41,14 @@ class AchatResource extends JsonResource
                 ];
             }),
 
-            // ✅ Achats relationship
-            'barres' => $this->whenLoaded('barres', function () {
-                return BarreResource::collection($this->barres);
+            'barres' => $this->barres->map(function ($barre){
+                return [
+                    'id' => $this->barre->id,
+                    'poid_pure' => $this->barre->poid_pure,
+                    'carrat_pure' => $this->barre->carrat_pure,
+                    'densite' => $this->barre->densite ?? null,
+                    'barre_status' => $this->barre->status,
+                ];
             }),
 
             // Created and updated by users
