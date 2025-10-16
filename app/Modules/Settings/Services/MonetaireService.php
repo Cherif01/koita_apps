@@ -3,7 +3,7 @@
 namespace App\Modules\Settings\Services;
 
 use App\Modules\Settings\Models\Monetaire;
-use App\Modules\Settings\Http\Resources\MonetaireResource;
+use App\Modules\Settings\Resources\MonetaireResource;
 use Illuminate\Support\Facades\Auth;
 use Exception;
 

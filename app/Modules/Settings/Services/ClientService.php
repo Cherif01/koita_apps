@@ -3,7 +3,7 @@
 namespace App\Modules\Settings\Services;
 
 use App\Modules\Settings\Models\Client;
-use App\Modules\Settings\Http\Resources\ClientResource;
+use App\Modules\Settings\Resources\ClientResource;
 use Illuminate\Support\Facades\Auth;
 use Exception;
 

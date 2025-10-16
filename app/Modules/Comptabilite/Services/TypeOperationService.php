@@ -3,7 +3,7 @@
 namespace App\Modules\Comptabilite\Services;
 
 use App\Modules\Comptabilite\Models\TypeOperation;
-use App\Modules\Comptabilite\Http\Resources\TypeOperationResource;
+use App\Modules\Comptabilite\Resources\TypeOperationResource;
 use Illuminate\Support\Facades\Auth;
 use Exception;
 

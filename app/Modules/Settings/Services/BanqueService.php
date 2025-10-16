@@ -3,7 +3,7 @@
 namespace App\Modules\Settings\Services;
 
 use App\Modules\Settings\Models\Banque;
-use App\Modules\Settings\Http\Resources\BanqueResource;
+use App\Modules\Settings\Resources\BanqueResource;
 use Illuminate\Support\Facades\Auth;
 use Exception;
 

@@ -1,7 +1,7 @@
 <?php
 namespace App\Modules\Settings\Services;
 
-use App\Modules\Settings\Http\Resources\DeviseResource;
+use App\Modules\Settings\Resources\DeviseResource;
 use App\Modules\Settings\Models\Devise;
 use Exception;
 use Illuminate\Support\Facades\Auth;

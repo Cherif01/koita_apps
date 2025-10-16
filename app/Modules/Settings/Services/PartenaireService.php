@@ -1,7 +1,7 @@
 <?php
 namespace App\Modules\Settings\Services;
 
-use App\Modules\Settings\Http\Resources\PartenaireResource;
+use App\Modules\Settings\Resources\PartenaireResource;
 use App\Modules\Settings\Models\Partenaire;
 use Exception;
 use Illuminate\Support\Facades\Auth;
