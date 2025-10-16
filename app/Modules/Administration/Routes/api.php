@@ -20,6 +20,6 @@ Route::middleware('auth:sanctum')->prefix('v1/auth')->group(function () {
 
 Route::middleware('auth:sanctum')->prefix('v1/admins')->group(function(){
     Route::get('fournisseurs/restore/{id}', [FournisseurController::class, 'restore']);
-    Route::get('fournisseurs/delete/{id}', [FournisseurController::class, 'forceDelete']);
+    Route::delete('fournisseurs/delete/{id}', [FournisseurController::class, 'forceDelete']);
     Route::apiResource("fournisseurs", FournisseurController::class);
 });

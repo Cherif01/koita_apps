@@ -6,6 +6,7 @@ use App\Modules\Administration\Models\Fournisseur;
 use App\Modules\Administration\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Achat extends Model
@@ -30,6 +31,11 @@ class Achat extends Model
     public function lot() : BelongsTo
     {
         return $this->belongsTo(Lot::class)->whereNull('lots.deleted_at');
+    }
+
+    public function barres() : HasMany
+    {
+        return $this->hasMany(Barre::class)->whereNull('barres.deleted_at');
     }
 
     public function createdBy(): BelongsTo
