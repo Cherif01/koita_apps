@@ -1,59 +1,109 @@
 <?php
-
 namespace App\Modules\Fondation\Services;
 
 use App\Modules\Fondation\Models\Fondation;
 use App\Modules\Fondation\Resources\FondationResource;
 use App\Modules\Purchase\Models\Barre;
+use Exception;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use Exception;
 
 class FondationService
 {
     /**
      * 🔹 Créer une nouvelle fondation (avec gestion des statuts barres).
      */
-    public function store(array $data)
+    // public function store(array $data)
+    // {
+    //     DB::beginTransaction();
+
+    //     try {
+    //         $ids = $data['ids_barres'];
+    //         $barres = Barre::whereIn('id', $ids)->get();
+
+    //         if ($barres->isEmpty()) {
+    //             return response()->json([
+    //                 'status'  => 404,
+    //                 'message' => 'Aucune barre trouvée pour la fondation.',
+    //             ]);
+    //         }
+
+    //         // 🔹 Mise à jour du statut des barres
+    //         if (count($ids) === 1) {
+    //             // Une seule barre → fondue
+    //             Barre::where('id', $ids[0])->update(['status' => 'fondu']);
+    //         } else {
+    //             // Plusieurs barres → fusionner
+    //             Barre::whereIn('id', $ids)->update(['status' => 'fusionner']);
+    //         }
+
+    //         // 🔹 Création de la fondation
+    //         $data['created_by'] = Auth::id();
+    //         $data['ids_barres'] = implode(',', $ids); // conversion en chaîne
+
+    //         $fondation = Fondation::create($data);
+
+    //         DB::commit();
+
+    //         return response()->json([
+    //             'status'  => 200,
+    //             'message' => 'Fondation créée avec succès.',
+    //             'data'    => new FondationResource($fondation),
+    //         ]);
+    //     } catch (Exception $e) {
+    //         DB::rollBack();
+
+    //         return response()->json([
+    //             'status'  => 500,
+    //             'message' => 'Erreur lors de la création de la fondation.',
+    //             'error'   => $e->getMessage(),
+    //         ]);
+    //     }
+    // }
+    public function store(array $payload)
     {
         DB::beginTransaction();
 
         try {
-            $ids = $data['ids_barres'];
-            $barres = Barre::whereIn('id', $ids)->get();
+            // On accepte soit un seul objet, soit un tableau d’objets
+            $fondations = isset($payload[0]) ? $payload : [$payload];
 
-            if ($barres->isEmpty()) {
-                return response()->json([
-                    'status'  => 404,
-                    'message' => 'Aucune barre trouvée pour la fondation.',
+            $resultats = [];
+
+            foreach ($fondations as $data) {
+                // Normaliser les IDs des barres
+                $ids = collect($data['ids_barres'])->map(fn($id) => (int) $id)->toArray();
+
+                // Mettre à jour les statuts des barres selon leur nombre
+                if (count($ids) === 1) {
+                    Barre::where('id', $ids[0])->update(['status' => 'fondue']);
+                } else {
+                    Barre::whereIn('id', $ids)->update(['status' => 'fusionner']);
+                }
+
+                // Création de la fondation
+                $fondation = Fondation::create([
+                    'ids_barres'   => implode(',', $ids),
+                    'poid_fondu'   => $data['poid_fondu'],
+                    'carat_moyen'  => $data['carat_moyen'],
+                    'poids_dubai'  => $data['poids_dubai'] ?? 0,
+                    'carrat_dubai' => $data['carrat_dubai'] ?? 0,
+                    'is_fixed'     => $data['is_fixed'] ?? false,
+                    'created_by'   => Auth::id(),
                 ]);
+
+                $resultats[] = new FondationResource($fondation);
             }
-
-            // 🔹 Mise à jour du statut des barres
-            if (count($ids) === 1) {
-                // Une seule barre → fondue
-                Barre::where('id', $ids[0])->update(['status' => 'fondu']);
-            } else {
-                // Plusieurs barres → fusionner
-                Barre::whereIn('id', $ids)->update(['status' => 'fusionner']);
-            }
-
-            // 🔹 Création de la fondation
-            $data['created_by'] = Auth::id();
-            $data['ids_barres'] = implode(',', $ids); // conversion en chaîne
-
-            $fondation = Fondation::create($data);
 
             DB::commit();
 
             return response()->json([
                 'status'  => 200,
-                'message' => 'Fondation créée avec succès.',
-                'data'    => new FondationResource($fondation),
+                'message' => 'Fondation(s) créée(s) avec succès.',
+                'data'    => count($resultats) === 1 ? $resultats[0] : $resultats,
             ]);
         } catch (Exception $e) {
             DB::rollBack();
-
             return response()->json([
                 'status'  => 500,
                 'message' => 'Erreur lors de la création de la fondation.',
