@@ -1,12 +1,12 @@
 <?php
 
-namespace App\Modules\Settings\Requests;
+namespace App\Modules\Comptabilite\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Validation\ValidationException;
 
-class StoreDeviseRequest extends FormRequest
+class StoreTypeOperationRequest extends FormRequest
 {
     /**
      * Autoriser la requête.
@@ -22,33 +22,32 @@ class StoreDeviseRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'libelle'      => 'required|string|max:100|unique:devises,libelle',
-            'symbole'      => 'nullable|string|max:10',
-            'taux_change'  => 'nullable|numeric|min:0',
+            'libelle' => 'required|string|max:150|unique:type_operations,libelle',
+            'nature'  => 'required|in:entree,sortie',
         ];
     }
 
     /**
-     * Messages personnalisés.
+     * Messages d’erreur personnalisés.
      */
     public function messages(): array
     {
         return [
-            'libelle.required' => 'Le libellé de la devise est obligatoire.',
+            'libelle.required' => 'Le libellé est obligatoire.',
             'libelle.unique'   => 'Ce libellé existe déjà.',
-            'taux_change.numeric' => 'Le taux de change doit être un nombre.',
-            'taux_change.min'  => 'Le taux de change ne peut pas être négatif.',
+            'nature.required'  => 'La nature est obligatoire.',
+            'nature.in'        => 'La nature doit être soit "entree" soit "sortie".',
         ];
     }
 
     /**
-     * 🔹 Réponse JSON en cas d’erreur de validation.
+     * 🔹 Réponse JSON en cas d’échec de validation.
      */
     protected function failedValidation(Validator $validator)
     {
         throw new ValidationException($validator, response()->json([
             'status'  => 'error',
-            'message' => 'Erreur de validation.',
+            'message' => 'Erreur de validation',
             'errors'  => $validator->errors(),
         ], 422));
     }

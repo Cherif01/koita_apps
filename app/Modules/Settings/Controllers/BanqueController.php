@@ -1,10 +1,10 @@
 <?php
 
-namespace App\Modules\Settings\Http\Controllers;
+namespace App\Modules\Settings\Controllers;
 
 use App\Http\Controllers\Controller;
-use App\Modules\Settings\Http\Requests\StoreBanqueRequest;
-use App\Modules\Settings\Http\Requests\UpdateBanqueRequest;
+use App\Modules\Settings\Requests\StoreBanqueRequest;
+use App\Modules\Settings\Requests\UpdateBanqueRequest;
 use App\Modules\Settings\Services\BanqueService;
 
 class BanqueController extends Controller

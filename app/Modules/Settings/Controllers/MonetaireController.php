@@ -1,9 +1,9 @@
 <?php
-namespace App\Modules\Settings\Http\Controllers;
+namespace App\Modules\Settings\Controllers;
 
 use App\Http\Controllers\Controller;
-use App\Modules\Settings\Http\Requests\StoreMonetaireRequest;
-use App\Modules\Settings\Http\Requests\UpdateMonetaireRequest;
+use App\Modules\Settings\Requests\StoreMonetaireRequest;
+use App\Modules\Settings\Requests\UpdateMonetaireRequest;
 use App\Modules\Settings\Services\MonetaireService;
 
 class MonetaireController extends Controller

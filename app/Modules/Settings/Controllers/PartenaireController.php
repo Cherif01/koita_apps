@@ -1,10 +1,10 @@
 <?php
 
-namespace App\Modules\Settings\Http\Controllers;
+namespace App\Modules\Settings\Controllers;
 
 use App\Http\Controllers\Controller;
-use App\Modules\Settings\Http\Requests\StorePartenaireRequest;
-use App\Modules\Settings\Http\Requests\UpdatePartenaireRequest;
+use App\Modules\Settings\Requests\StorePartenaireRequest;
+use App\Modules\Settings\Requests\UpdatePartenaireRequest;
 use App\Modules\Settings\Services\PartenaireService;
 
 class PartenaireController extends Controller

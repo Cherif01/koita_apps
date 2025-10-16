@@ -1,10 +1,10 @@
 <?php
 
-namespace App\Modules\Settings\Http\Controllers;
+namespace App\Modules\Settings\Controllers;
 
 use App\Http\Controllers\Controller;
-use App\Modules\Settings\Http\Requests\StoreClientRequest;
-use App\Modules\Settings\Http\Requests\UpdateClientRequest;
+use App\Modules\Settings\Requests\StoreClientRequest;
+use App\Modules\Settings\Requests\UpdateClientRequest;
 use App\Modules\Settings\Services\ClientService;
 
 class ClientController extends Controller

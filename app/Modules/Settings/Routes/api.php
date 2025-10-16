@@ -1,11 +1,11 @@
 <?php
 
-use App\Modules\Settings\Http\Controllers\BanqueController;
+use App\Modules\Settings\Controllers\BanqueController;
 use Illuminate\Support\Facades\Route;
-use App\Modules\Settings\Http\Controllers\ClientController;
-use App\Modules\Settings\Http\Controllers\DeviseController;
-use App\Modules\Settings\Http\Controllers\MonetaireController;
-use App\Modules\Settings\Http\Controllers\PartenaireController;
+use App\Modules\Settings\Controllers\ClientController;
+use App\Modules\Settings\Controllers\DeviseController;
+use App\Modules\Settings\Controllers\MonetaireController;
+use App\Modules\Settings\Controllers\PartenaireController;
 
 Route::middleware('auth:sanctum')->prefix('settings/')->group(function () {
     Route::apiResource('clients', ClientController::class);
