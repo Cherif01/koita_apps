@@ -20,8 +20,8 @@ class FondationResource extends JsonResource
         return [
             'id'           => $this->id,
             'ids_barres'   => $this->ids_barres, // renvoyé comme tableau (grâce à ton accessor)
-            'poid_fondu'   => (float) $this->poid_fondu,
-            'carat_moyen'  => (float) $this->carat_moyen,
+            'poids_fondu'   => (float) $this->poids_fondu,
+            'carrat_fondu'  => (float) $this->carrat_fondu,
             'poids_dubai'  => (float) $this->poids_dubai,
             'carrat_dubai' => (float) $this->carrat_dubai,
             'is_fixed'     => (bool) $this->is_fixed,

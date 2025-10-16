@@ -16,8 +16,8 @@ class Fondation extends Model
 
     protected $fillable = [
         'ids_barres',
-        'poid_fondu',
-        'carat_moyen',
+        'poids_fondu',
+        'carrat_moyen',
         'poids_dubai',
         'carrat_dubai',
         'is_fixed',
@@ -67,9 +67,9 @@ class Fondation extends Model
     {
         return Attribute::make(
             get: fn () => sprintf(
-                'Poids: %.2f g | Carat moyen: %.2f | Fixée: %s',
-                $this->poid_fondu,
-                $this->carat_moyen,
+                'Poids: %.2f g | Carrat moyen: %.2f | Fixée: %s',
+                $this->poids_fondu,
+                $this->carrat_moyen,
                 $this->is_fixed ? 'Oui' : 'Non'
             )
         );

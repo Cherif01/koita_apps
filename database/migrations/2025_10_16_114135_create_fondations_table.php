@@ -19,7 +19,7 @@ return new class extends Migration
 
             // 🔹 Informations de la fonte locale
             $table->decimal('poid_fondu', 10, 5)->default(0.00);
-            $table->decimal('carat_moyen', 10, 5)->default(0.00);
+            $table->decimal('carrat_moyen', 10, 5)->default(0.00);
             
             // 🔹 Informations après évaluation à Dubaï
             $table->decimal('poids_dubai', 10, 5)->default(0.00);

@@ -21,8 +21,8 @@ class StoreFondationRequest extends FormRequest
         return [
             '*.ids_barres'         => 'required|array|min:1',
             '*.ids_barres.*'       => 'integer|distinct|min:1',
-            '*.poid_fondu'         => 'required|numeric|min:0',
-            '*.carat_moyen'        => 'required|numeric|min:0',
+            '*.poids_fondu'         => 'required|numeric|min:0',
+            '*.carrat_fondu'        => 'required|numeric|min:0',
             '*.poids_dubai'        => 'nullable|numeric|min:0',
             '*.carrat_dubai'       => 'nullable|numeric|min:0',
             '*.is_fixed'           => 'nullable|boolean',
