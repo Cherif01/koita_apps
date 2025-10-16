@@ -15,14 +15,14 @@ class AchatController extends Controller
 
     public function index()
     {
-        $achats = Achat::with('fournisseur', 'lot', 'createdBy', 'updatedBy')->orderBy('created_at', 'desc')->get();
+        $achats = Achat::with('fournisseur', 'lot', 'barres', 'createdBy', 'updatedBy')->orderBy('created_at', 'desc')->get();
 
         return $this->successResponse(AchatResource::collection($achats), "Liste de tous les achats");
     }
 
     public function show(string $id)
     {
-        $achat = Achat::with('fournisseur', 'lot', 'createdBy', 'updatedBy')->find($id);
+        $achat = Achat::with('fournisseur', 'lot', 'barres', 'createdBy', 'updatedBy')->find($id);
 
         if(! $achat){
             return $this->errorResponse("Achat introuvable");

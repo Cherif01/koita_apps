@@ -36,6 +36,11 @@ class AchatResource extends JsonResource
                 ];
             }),
 
+            // ✅ Achats relationship
+            'barres' => $this->whenLoaded('barres', function () {
+                return BarreResource::collection($this->barres);
+            }),
+
             // Created and updated by users
             'createdBy' => $this->createdBy ? [
                 'id' => $this->createdBy->id,
