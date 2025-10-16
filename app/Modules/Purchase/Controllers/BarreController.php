@@ -53,13 +53,6 @@ class BarreController extends Controller
 
             Barre::insert($data);
 
-            $achat = Achat::find($data[0]['achat_id']);
-
-            if ($achat) {
-                $achat->update(['status' => 'terminer']);
-                Lot::where('id', $achat->lot_id)->update(['status' => 'terminer']);
-            }
-
             DB::commit();
 
             $count = count($data);
