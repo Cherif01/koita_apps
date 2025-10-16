@@ -21,7 +21,7 @@ return Application::configure(basePath: dirname(__DIR__))
             if (File::isDirectory($modulesPath)) {
                 foreach (File::directories($modulesPath) as $module) {
                     $routesPath = $module.'/Routes/api.php';
-
+                   
                     if (File::exists($routesPath)) {
                         Route::middleware('api')
                             ->prefix('api')

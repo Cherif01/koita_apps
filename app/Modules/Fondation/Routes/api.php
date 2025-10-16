@@ -3,8 +3,8 @@
 use Illuminate\Support\Facades\Route;
 use App\Modules\Fondation\Controllers\FondationController;
 
-Route::middleware('auth:sanctum')->prefix('fondations/operations')->group(function () {
-    Route::apiResource('fondations', FondationController::class)->only([
+Route::middleware('auth:sanctum')->prefix('v1/fondations')->group(function () {
+    Route::apiResource('operations', FondationController::class)->only([
         'index',
         'store',
         'show',
