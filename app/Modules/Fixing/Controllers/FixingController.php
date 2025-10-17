@@ -104,21 +104,31 @@ class FixingController extends Controller
         }
 
         $fields = $request->validated();
-        $fields['updated_by'] = Auth::id();
 
         DB::beginTransaction();
 
         try {
-            $devise = Devise::find($fields['devise_id']);
+            $devise = !empty($fields['devise_id'])
+                        ? Devise::where('id', $fields['devise_id'])->value('symbole')
+                        : optional($fixing->devise)->symbole;
 
-            if (Str::upper($devise->symbole) == 'USD') {
+            if ($devise && Str::upper($devise) == 'USD') {
                 $bourse = $fields['bourse'] ?? 0;
                 $discount = $fields['discount'] ?? 0;
 
                 $fields['unit_price'] = ($bourse / 34) - $discount;
             }
 
-            $fixing->update($fields);
+            $fixing->update([
+                'fournisseur_id' => $fields['fournisseur_id'] ?? $fixing->fournisseur_id,
+                'poids_pro'      => $fields['poids_pro'] ?? $fixing->poids_pro,
+                'carrat_moyenne' => $fields['carrat_moyenne'] ?? $fixing->carrat_moyenne,
+                'discount'       => $fields['discount'] ?? $fixing->discount,
+                'bourse'         => $fields['bourse'] ?? $fixing->bourse,
+                'unit_price'     => $fields['unit_price'] ?? $fixing->unit_price,
+                'devise_id'      => $fields['devise_id'] ?? $fixing->devise_id,
+                'updated_by'     => Auth::id()
+            ]);
 
             DB::commit();
 
