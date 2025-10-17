@@ -14,7 +14,7 @@ class FondationResource1 extends JsonResource
     {
         return [
             'id'            => $this->id,
-            'ids_barres'    => $this->ids_barres,
+           
             'poids_fondu'   => (float) $this->poids_fondu,
             'carrat_fondu'  => (float) $this->carrat_fondu,
             'poids_dubai'   => (float) $this->poids_dubai,
