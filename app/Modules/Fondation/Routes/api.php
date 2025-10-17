@@ -12,6 +12,7 @@ Route::middleware('auth:sanctum')->prefix('v1/fondations')->group(function () {
         'show',
         'destroy',
     ]);
+    Route::get('liste-non-fondu',[FondationController::class,'listeFondationNonFondue']);
     Route::apiResource('init-fondations', InitFondationController::class)->only([
         'index',
         'show',
