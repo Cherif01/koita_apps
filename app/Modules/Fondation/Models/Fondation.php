@@ -1,12 +1,11 @@
 <?php
-
 namespace App\Modules\Fondation\Models;
 
 use App\Modules\Administration\Models\User;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Database\Eloquent\Casts\Attribute;
 
 class Fondation extends Model
 {
@@ -16,6 +15,7 @@ class Fondation extends Model
 
     protected $fillable = [
         'ids_barres',
+        'id_init_fondation',
         'poids_fondu',
         'carrat_fondu',
         'poids_dubai',
@@ -36,6 +36,13 @@ class Fondation extends Model
     {
         return $this->belongsTo(User::class, 'created_by');
     }
+/**
+ * Relation : la fondation appartient à une initialisation de fondation.
+ */
+    public function initFondation()
+    {
+        return $this->belongsTo(InitFondation::class, 'id_init_fondation');
+    }
 
     /**
      * Utilisateur ayant modifié la fondation.
@@ -55,8 +62,8 @@ class Fondation extends Model
     protected function idsBarres(): Attribute
     {
         return Attribute::make(
-            get: fn ($value) => $value ? array_map('intval', explode(',', $value)) : [],
-            set: fn ($value) => is_array($value) ? implode(',', $value) : $value
+            get: fn($value) => $value ? array_map('intval', explode(',', $value)) : [],
+            set: fn($value) => is_array($value) ? implode(',', $value) : $value
         );
     }
 
@@ -66,7 +73,7 @@ class Fondation extends Model
     protected function resume(): Attribute
     {
         return Attribute::make(
-            get: fn () => sprintf(
+            get: fn() => sprintf(
                 'Poids: %.2f g | Carrat moyen: %.2f | Fixée: %s',
                 $this->poids_fondu,
                 $this->carrat_moyen,
