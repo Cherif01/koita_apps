@@ -20,7 +20,7 @@ class StoreFixingRequest extends FormRequest
             'discount' => ['nullable', 'numeric', 'min:0'],
             'bourse' => ['nullable', 'numeric', 'min:0'],
             'unit_price' => ['nullable', 'numeric', 'min:0'],
-            'devise_id' => ['required', 'integer', 'exists:devises,id'],
+            'devise_id' => ['nullable', 'integer', 'exists:devises,id'],
             'barres' => ['nullable', 'array'],
             'barres.*.id' => ['required_with:barres', 'integer'],
         ];
@@ -49,7 +49,6 @@ class StoreFixingRequest extends FormRequest
             'unit_price.numeric' => 'Le prix unitaire doit être un nombre.',
             'unit_price.min' => 'Le prix unitaire ne peut pas être inférieur à 0.',
 
-            'devise_id.required' => 'La devise est obligatoire.',
             'devise_id.integer' => 'La devise doit être un identifiant valide.',
             'devise_id.exists' => 'La devise sélectionnée est introuvable.',
 
