@@ -82,7 +82,7 @@ class Fondation extends Model
             get: fn() => sprintf(
                 'Poids: %.2f g | Carrat moyen: %.2f | Fixée: %s',
                 $this->poids_fondu,
-                $this->carrat_moyen,
+                $this->carrat_fondu,
                 $this->is_fixed ? 'Oui' : 'Non'
             )
         );
