@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use App\Modules\Settings\Models\Client;
 use App\Modules\Administration\Models\User;
+use App\Modules\Fondation\Models\Fondation;
 
 class InitLivraison extends Model
 {
@@ -58,7 +59,17 @@ class InitLivraison extends Model
     {
         return $this->hasMany(Expedition::class, 'id_init_livraison');
     }
-
+ public function fondations()
+    {
+        return $this->hasManyThrough(
+            Fondation::class,
+            Expedition::class,
+            'id_init_livraison',
+            'id',
+            'id',
+            'id_barre_fondu'
+        );
+    }
     // ==============================
     // 🔹 GÉNÉRATION AUTO DE LA RÉFÉRENCE UNIQUE
     // ==============================
