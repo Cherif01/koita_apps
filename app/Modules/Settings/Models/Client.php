@@ -6,19 +6,20 @@ use App\Modules\Administration\Models\User;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Database\Eloquent\Casts\Attribute;
 
 class Client extends Model
 {
-    use HasFactory,SoftDeletes;
+    use HasFactory, SoftDeletes;
 
     protected $table = 'clients';
 
     protected $fillable = [
-        'nom',
-        'prenom',
-        'telephone',
+        'nom_complet',
+        'raison_sociale',
+        'pays',
+        'ville',
         'adresse',
+        'telephone',
         'email',
         'created_by',
         'modify_by',
@@ -45,16 +46,18 @@ class Client extends Model
     }
 
     // ==============================
-    // 🔹 ACCESSORS MODERNES (Laravel 12)
+    // 🔹 ACCESSORS (si besoin)
     // ==============================
 
     /**
-     * 🔹 Obtenir le nom complet du client
+     * 🔹 Retourne le nom affichable du client :
+     * - S’il a une raison sociale (entreprise), on la montre
+     * - Sinon, on montre le nom complet
      */
-    protected function nomComplet(): Attribute
+    public function getNomAffichageAttribute(): string
     {
-        return Attribute::make(
-            get: fn () => ucfirst($this->prenom) . ' ' . strtoupper($this->nom)
-        );
+        return $this->raison_sociale 
+            ? strtoupper($this->raison_sociale)
+            : ucfirst($this->nom_complet);
     }
 }
