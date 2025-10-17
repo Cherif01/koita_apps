@@ -3,6 +3,7 @@ namespace App\Modules\Fondation\Models;
 
 use App\Modules\Administration\Models\User;
 use App\Modules\Fixing\Models\Expedition;
+use App\Modules\Fixing\Models\FixingClient;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -72,6 +73,12 @@ class Fondation extends Model
     {
         return $this->hasOne(Expedition::class, 'id_barre_fondu');
     }
+
+
+    public function fixing()
+{
+    return $this->belongsTo(FixingClient::class, 'id_fixing');
+}
 
     /**
      * Retourne un texte résumé de la fondation.
