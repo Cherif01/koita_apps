@@ -21,7 +21,9 @@ trait Helper
             $multplication += $barre->poid_pure * $barre->carrat_pure;
         }
 
-        $moyenne = $multplication / $barres->sum('poid_pure');
+        $somme = $barres->sum('poid_pure');
+
+        $moyenne = $somme > 0 ? ($multplication / $somme) : 0 ;
 
         return number_format($moyenne, 2);
     }
@@ -60,7 +62,7 @@ trait Helper
         $multplication = $this->poidsTimeCarrat($fixing_id);
         $poids_total = $this->poidsFixing($fixing_id);
 
-        $result = $multplication / $poids_total;
+        $result = $poids_total > 0 ? ($multplication / $poids_total) : 0;
 
         return number_format($result, 2) ?? 0;
     }
@@ -123,12 +125,12 @@ trait Helper
             $barre_fondue = Fondation::where('ids_barres', $barre->id)->first();
 
             if($barre_fondue->statut == 'corriger'){
-                $montant = ($unit_price / $barre->densite) * $barre_fondue->poids_dubai * $barre_fondue->carrat_dubai;
+                $montant = ($barre->densite > 0 ? $unit_price / $barre->densite : 0) * $barre_fondue->poids_dubai * $barre_fondue->carrat_dubai;
             }else{
-                $montant = ($unit_price / $barre->densite) * $barre->poid_pure * $barre->carrat_pure;
+                $montant = ($barre->densite > 0 ? $unit_price / $barre->densite : 0) * $barre->poid_pure * $barre->carrat_pure;
             }
         }else{
-            $montant = ($unit_price / $barre->densite) * $barre->poid_pure * $barre->carrat_pure;
+            $montant = ($barre->densite > 0 ? $unit_price / $barre->densite : 0) * $barre->poid_pure * $barre->carrat_pure;
         }
 
         return number_format($montant, 2);
