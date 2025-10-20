@@ -310,11 +310,11 @@ class FixingClientService
         // 🟢 Cas client local
         $prixUnitaire = ($bourse / 34) - $discompte;
 
-        $totalFacture =( $prixUnitaire /22)* $pureteTotale * $carratMoyen;
+        $totalFacture =( $prixUnitaire /22)* $poidsTotal * $carratMoyen;
     } else {
-         $prixUnitaire = ($bourse / 31.10347)  - ($discompte * 32);
+         $prixUnitaire = ($bourse / 31.10347) -$discompte ;// Non applicable
         // 🟣 Cas client extra (Dubaï)
-        $totalFacture = $prixUnitaire*$pureteTotale;
+        $totalFacture = ($bourse / 31.10347) * $pureteTotale - ($discompte * 32);
        
     }
 
