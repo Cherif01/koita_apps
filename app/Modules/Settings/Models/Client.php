@@ -3,6 +3,7 @@
 namespace App\Modules\Settings\Models;
 
 use App\Modules\Administration\Models\User;
+use App\Modules\Fixing\Models\FixingClient;
 use App\Modules\Fixing\Models\InitLivraison;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -50,7 +51,10 @@ class Client extends Model
 {
     return $this->hasMany(InitLivraison::class, 'id_client');
 }
-
+ public function fixings()
+    {
+        return $this->hasMany(FixingClient::class, 'id_client');
+    }
 
     // ==============================
     // 🔹 ACCESSORS (si besoin)

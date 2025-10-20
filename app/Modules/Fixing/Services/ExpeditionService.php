@@ -154,20 +154,23 @@ class ExpeditionService
 
     public function calculerPoidsEtCarat(int $id_init_livraison): array
     {
-        // 🔹 Récupérer toutes les expéditions liées
+        // 🔹 Récupérer toutes les expéditions liées avec leurs fondations
         $expeditions = Expedition::where('id_init_livraison', $id_init_livraison)
             ->with('fondation')
             ->get();
 
         if ($expeditions->isEmpty()) {
             return [
-                'poids_total'  => 0,
-                'carrat_moyen' => 0,
+                'poids_total'   => 0,
+                'carrat_moyen'  => 0,
+                'purete_totale' => 0,
+                'details'       => [],
             ];
         }
 
-        $poidsTotal         = 0;
-        $sommeCaratPonderee = 0;
+        // === Étape 1 : Calcul du poids total et du carat moyen ===
+        $poidsTotal         = 0.0;
+        $sommeCaratPonderee = 0.0;
 
         foreach ($expeditions as $expedition) {
             if ($expedition->fondation) {
@@ -179,17 +182,40 @@ class ExpeditionService
             }
         }
 
-        // 🔹 Calcul du carat moyen pondéré
-        $caratMoyen = $poidsTotal > 0
-            ? $sommeCaratPonderee / $poidsTotal
-            : 0;
+        $carratMoyen = $poidsTotal > 0 ? $sommeCaratPonderee / $poidsTotal : 0.0;
+        $carratMoyen = round($carratMoyen, 2);
+        $poidsTotal  = round($poidsTotal, 3);
 
-        // 🔹 Troncage à deux décimales (sans arrondi)
-        $caratMoyen = floor($caratMoyen * 100) / 100;
+        // === Étape 2 : Calcul des puretés par ligne ===
+        $details = [];
+        foreach ($expeditions as $expedition) {
+            if ($expedition->fondation) {
+                $poids_fondu  = (float) $expedition->fondation->poids_fondu;
+                $carrat_fondu = (float) $expedition->fondation->carrat_fondu;
 
+                // 💎 Pureté locale = ((poids * carat) / 24) / carrat_moyen
+                $purete_locale_brute = ($poids_fondu * $carrat_fondu) / 24;
+                $purete_local        = $carratMoyen > 0 ? $purete_locale_brute / $carratMoyen : 0.0;
+
+                $details[] = [
+                    'id_expedition' => $expedition->id,
+                    'poids_fondu'   => round($poids_fondu, 3),
+                    'carrat_fondu'  => round($carrat_fondu, 2),
+                    'purete_local'  => round($purete_local, 3),
+                ];
+            }
+        }
+
+        // === Étape 3 : Pureté totale globale ===
+        $pureteTotale = ($poidsTotal * $carratMoyen) / 24;
+        $pureteTotale = round($pureteTotale, 3);
+
+        // ✅ Résultat final
         return [
-            'poids_total'  => floor($poidsTotal * 1000) / 1000, // 3 décimales tronquées pour le poids
-            'carrat_moyen' => $caratMoyen,
+            'poids_total'   => $poidsTotal,
+            'carrat_moyen'  => $carratMoyen,
+            'purete_totale' => $pureteTotale,
+            'details'       => $details,
         ];
     }
 

@@ -1,7 +1,10 @@
 <?php
+
 namespace App\Modules\Settings\Resources;
 
 use Illuminate\Http\Resources\Json\JsonResource;
+use App\Modules\Fixing\Resources\FixingClientResource;
+use App\Modules\Fixing\Resources\InitLivraisonResource;
 
 class ClientResource extends JsonResource
 {
@@ -29,8 +32,18 @@ class ClientResource extends JsonResource
             'created_at'     => $this->created_at?->format('Y-m-d H:i:s'),
             'updated_at'     => $this->updated_at?->format('Y-m-d H:i:s'),
 
-            // 🔹 Attribut intelligent (nom affichable)
+            // 🔹 Nom affichable
             'nom_affichage'  => $this->nom_affichage,
-        ], fn($value) => ! is_null($value));
+
+            // 🔹 Fixings du client
+            'fixings' => FixingClientResource::collection(
+                $this->whenLoaded('fixings')
+            ),
+
+            // 🔹 Livraisons initiales liées
+            'init_livraisons' => InitLivraisonResource::collection(
+                $this->whenLoaded('initLivraisons')
+            ),
+        ], fn($value) => !is_null($value));
     }
 }

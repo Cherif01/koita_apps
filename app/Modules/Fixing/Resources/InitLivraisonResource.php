@@ -12,35 +12,39 @@ class InitLivraisonResource extends JsonResource
 {
     public function toArray(Request $request): array
     {
-        // Calcul poids + carat
+        // ✅ Calculs (poids, carat, pureté, détails)
         $calculs = app(ExpeditionService::class)
             ->calculerPoidsEtCarat($this->id);
 
         return [
-            'id'           => $this->id,
-            'reference'    => $this->reference ?? '',
-            'commentaire'  => $this->commentaire ?? '',
-            'status'       => $this->status ?? 'encours',
+            'id'             => $this->id,
+            'reference'      => $this->reference ?? '',
+            'commentaire'    => $this->commentaire ?? '',
+            'status'         => $this->status ?? 'encours',
 
-            // Client
-            'client'       => new ClientResource($this->whenLoaded('client')),
+            // 🔹 Client lié
+            'client'         => new ClientResource($this->whenLoaded('client')),
 
-            // Fondations liées directement
-            'fondations'   => FondationResource::collection(
+            // 🔹 Fondations liées
+            'fondations'     => FondationResource::collection(
                 $this->whenLoaded('fondations')
             ),
 
-            // Valeurs calculées
-            'poids_total'  => $calculs['poids_total'],
-            'carrat_moyen' => $calculs['carrat_moyen'],
+            // 🔹 Valeurs calculées
+            'poids_total'    => $calculs['poids_total'] ?? 0,
+            'carrat_moyen'   => $calculs['carrat_moyen'] ?? 0,
+            'purete_totale'  => $calculs['purete_totale'] ?? 0,
 
-            // Audit
-            'created_by'   => $this->createur?->name,
-            'modify_by'    => $this->modificateur?->name,
+            // 🔹 Détails expéditions (chaque ligne)
+            'details'        => $calculs['details'] ?? [],
 
-            // Dates
-            'created_at'   => $this->created_at?->format('Y-m-d H:i:s'),
-            'updated_at'   => $this->updated_at?->format('Y-m-d H:i:s'),
+            // 🔹 Audit
+            'created_by'     => $this->createur?->name,
+            'modify_by'      => $this->modificateur?->name,
+
+            // 🔹 Dates formatées
+            'created_at'     => $this->created_at?->format('Y-m-d H:i:s'),
+            'updated_at'     => $this->updated_at?->format('Y-m-d H:i:s'),
         ];
     }
 }

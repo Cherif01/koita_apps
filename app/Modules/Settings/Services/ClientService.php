@@ -1,13 +1,12 @@
 <?php
-
 namespace App\Modules\Settings\Services;
 
+use App\Modules\Fixing\Models\InitLivraison;
 use App\Modules\Settings\Models\Client;
 use App\Modules\Settings\Resources\ClientResource;
-use Illuminate\Support\Facades\Auth;
-use App\Modules\Fixing\Models\InitLivraison;
 use App\Modules\Settings\Resources\LivraisonNonFixeeResource;
 use Exception;
+use Illuminate\Support\Facades\Auth;
 
 class ClientService
 {
@@ -18,13 +17,13 @@ class ClientService
     {
         try {
             $data['created_by'] = Auth::id();
-            $client = Client::create($data);
+            $client             = Client::create($data);
 
             return response()->json([
                 'status'  => 200,
                 'message' => 'Client créé avec succès.',
                 'data'    => new ClientResource(
-                    $client->load(['createur', 'modificateur', 'initLivraisons'])
+                    $client->load(['createur', 'modificateur', 'initLivraisons', 'fixings'])
                 ),
             ]);
         } catch (Exception $e) {
@@ -42,7 +41,7 @@ class ClientService
     public function update(int $id, array $data)
     {
         try {
-            $client = Client::findOrFail($id);
+            $client            = Client::findOrFail($id);
             $data['modify_by'] = Auth::id();
             $client->update($data);
 
@@ -50,7 +49,7 @@ class ClientService
                 'status'  => 200,
                 'message' => 'Client mis à jour avec succès.',
                 'data'    => new ClientResource(
-                    $client->load(['createur', 'modificateur', 'initLivraisons'])
+                    $client->load(['createur', 'modificateur', 'initLivraisons', 'fixings'])
                 ),
             ]);
         } catch (Exception $e) {
@@ -85,19 +84,19 @@ class ClientService
     }
 
     /**
-     * 🔹 Récupérer tous les clients avec leurs livraisons
+     * 🔹 Récupérer tous les clients avec leurs livraisons et fixings
      */
     public function getAll()
     {
         try {
-            $clients = Client::with(['createur', 'modificateur', 'initLivraisons'])
+            $clients = Client::with(['createur', 'modificateur', 'initLivraisons', 'fixings'])
                 ->orderByDesc('created_at')
                 ->get();
 
             return response()->json([
-                'status' => 200,
+                'status'  => 200,
                 'message' => 'Liste des clients récupérée avec succès.',
-                'data'   => ClientResource::collection($clients),
+                'data'    => ClientResource::collection($clients),
             ]);
         } catch (Exception $e) {
             return response()->json([
@@ -108,21 +107,19 @@ class ClientService
         }
     }
 
-
-
     /**
-     * 🔹 Récupérer un client spécifique avec ses livraisons
+     * 🔹 Récupérer un client spécifique avec ses livraisons et fixings
      */
     public function getOne(int $id)
     {
         try {
-            $client = Client::with(['createur', 'modificateur', 'initLivraisons'])
+            $client = Client::with(['createur', 'modificateur', 'initLivraisons', 'fixings'])
                 ->findOrFail($id);
 
             return response()->json([
-                'status' => 200,
+                'status'  => 200,
                 'message' => 'Client trouvé avec succès.',
-                'data'   => new ClientResource($client),
+                'data'    => new ClientResource($client),
             ]);
         } catch (Exception $e) {
             return response()->json([
@@ -133,28 +130,28 @@ class ClientService
         }
     }
 
- 
+    /**
+     * 🔹 Récupérer les livraisons non fixées d’un client
+     */
+    public function getLivraisonsNonFixees(int $clientId)
+    {
+        try {
+            $livraisons = InitLivraison::with(['fondations'])
+                ->where('id_client', $clientId)
+                ->orderByDesc('id')
+                ->get();
 
-public function getLivraisonsNonFixees(int $clientId)
-{
-    try {
-        $livraisons = InitLivraison::with(['fondations'])
-            ->where('id_client', $clientId)
-            ->orderByDesc('id')
-            ->get();
-
-        return response()->json([
-            'status'  => 200,
-            'message' => 'Livraisons non fixées récupérées avec succès.',
-            'data'    => LivraisonNonFixeeResource::collection($livraisons),
-        ]);
-    } catch (\Exception $e) {
-        return response()->json([
-            'status'  => 500,
-            'message' => 'Erreur lors de la récupération des livraisons non fixées.',
-            'error'   => $e->getMessage(),
-        ], 500);
+            return response()->json([
+                'status'  => 200,
+                'message' => 'Livraisons non fixées récupérées avec succès.',
+                'data'    => LivraisonNonFixeeResource::collection($livraisons),
+            ]);
+        } catch (Exception $e) {
+            return response()->json([
+                'status'  => 500,
+                'message' => 'Erreur lors de la récupération des livraisons non fixées.',
+                'error'   => $e->getMessage(),
+            ]);
+        }
     }
-}
-
 }
