@@ -19,7 +19,7 @@ class FournisseurResource extends JsonResource
             'name' => $this->name,
             'adresse' => $this->adresse,
             'telephone' => $this->telephone ?? null,
-            'solde_operations' => $this->soldeFournisseurOperations($this->id),
+            'solde' => $this->soldeGlobalFournisseur($this->id),
             'image' => is_null($this->image) ? asset('/images/male.jpg') : asset('/storage/images/fournisseurs/'.$this->image),
 
             // ✅ Achats relationship

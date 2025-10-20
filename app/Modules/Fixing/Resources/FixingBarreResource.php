@@ -39,6 +39,7 @@ class FixingBarreResource extends JsonResource
                     'name' => $this->fixing->fournisseur->name,
                     'adresse' => $this->fixing->fournisseur->adresse ?? null,
                     'telephone' => $this->fixing->fournisseur->telephone,
+                    'solde' => $this->soldeGlobalFournisseur($this->fixing->fournisseur->id),
                     'image' => is_null($this->fixing->fournisseur->image) ? asset('/images/male.jpg') : asset('/storage/images/fournisseurs/'.$this->fixing->fournisseur->image)
                 ],
                 'status_fixing' => $this->fixing->status,

@@ -22,7 +22,7 @@ class FixingResource extends JsonResource
                     'name' => $this->fournisseur->name ?? null,
                     'adresse' => $this->fournisseur->adresse ?? null,
                     'telephone' => $this->fournisseur->telephone ?? null,
-                    'solde_operations' => $this->soldeFournisseurOperations($this->fournisseur->id),
+                    'solde' => $this->soldeGlobalFournisseur($this->fournisseur->id),
                     'image' => is_null($this->fournisseur->image) ? asset('/images/male.jpg') : asset('/storage/images/fournisseurs/'.$this->fournisseur->image),
                 ];
             }),
