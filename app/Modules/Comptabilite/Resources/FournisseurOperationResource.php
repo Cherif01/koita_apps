@@ -21,18 +21,11 @@ class FournisseurOperationResource extends JsonResource
                 'nature' => $this->typeOperation->nature,
             ],
 
-            'compte'            => [
-                'id' => $this->compte->id,
-                'libelle' => $this->compte->libelle,
-                'numero_compte' => $this->compte->numero_compte,
-                'solde_initial' => $this->compte->solde_initial,
-                'commentaire' => $this->compte->commentaire ?? null,
-                'devise' => [
-                    'id' => $this->compte->devise->id ?? null,
-                    'libelle' => $this->compte->devise->libelle ?? null,
-                    'symbole' => $this->compte->devise->symbole ?? null,
-                    'taux_change' => $this->compte->devise->taux_change ?? null,
-                ]
+            'devise' => [
+                'id' => $this->devise->id ?? null,
+                'libelle' => $this->devise->libelle ?? null,
+                'symbole' => $this->devise->symbole ?? null,
+                'taux_change' => $this->devise->taux_change ?? null,
             ],
 
             'taux_jour'         => $this->taux,

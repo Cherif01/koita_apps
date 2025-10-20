@@ -23,9 +23,6 @@ class CompteResource extends JsonResource
             // 'solde' => $this->soldeCompte($this->id, $this->solde_initial),
             'commentaire' => $this->commentaire,
 
-            // Relationships here...
-            'opt_fournisseurs' => FournisseurOperationResource::collection($this->whenLoaded('fournisseurOperations')),
-
             'devise' => $this->devise ? [
                 'id' => $this->devise->id ?? null,
                 'libelle' => $this->devise->libelle ?? null,
