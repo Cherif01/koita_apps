@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::table('fondations', function (Blueprint $table) {
             // ✅ Renommer les colonnes
             $table->renameColumn('poid_fondu', 'poids_fondu');
-            $table->renameColumn('carat_moyen', 'carrat_fondu');
+            $table->renameColumn('carrat_moyen', 'carrat_fondu');
         });
     }
 
@@ -26,7 +26,7 @@ return new class extends Migration
         Schema::table('fondations', function (Blueprint $table) {
             // 🔁 Revenir en arrière si nécessaire
             $table->renameColumn('poids_fondu', 'poid_fondu');
-            $table->renameColumn('carrat_fondu', 'carat_moyen');
+            $table->renameColumn('carrat_fondu', 'carrat_moyen');
         });
     }
 };
