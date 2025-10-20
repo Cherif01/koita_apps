@@ -62,7 +62,7 @@ trait Helper
         $multplication = $this->poidsTimeCarrat($fixing_id);
         $poids_total = $this->poidsFixing($fixing_id);
 
-        $result = $poids_total > 0 ? ($multplication / $poids_total) : 0;
+        $result = ((float) $poids_total) > 0 ? ((float) $multplication / (float) $poids_total) : 0;
 
         return number_format($result, 2) ?? 0;
     }
