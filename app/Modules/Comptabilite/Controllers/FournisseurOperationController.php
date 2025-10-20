@@ -15,14 +15,14 @@ class FournisseurOperationController extends Controller
 
     public function index()
     {
-        $fournisseur_operations = FournisseurOperation::with('fournisseur', 'typeOperation', 'compte', 'devise', 'createdBy', 'updatedBy')->orderBy('created_at', 'desc')->get();
+        $fournisseur_operations = FournisseurOperation::with('fournisseur', 'typeOperation', 'devise', 'createdBy', 'updatedBy')->orderBy('created_at', 'desc')->get();
 
         return $this->successResponse(FournisseurOperationResource::collection($fournisseur_operations), "Liste de toutes les operations des fournisseurs.");
     }
 
     public function show(string $id)
     {
-        $fournisseur_operation = FournisseurOperation::with('fournisseur', 'typeOperation', 'compte', 'devise', 'createdBy', 'updatedBy')->find($id);
+        $fournisseur_operation = FournisseurOperation::with('fournisseur', 'typeOperation', 'devise', 'createdBy', 'updatedBy')->find($id);
 
         if(! $fournisseur_operation){
             return $this->errorResponse("Operation fournisseur introuvable");

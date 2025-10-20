@@ -16,7 +16,7 @@ class StoreFournisseurOperationRequest extends FormRequest
         return [
             'fournisseur_id'   => ['required', 'exists:fournisseurs,id'],
             'type_operation_id'=> ['required', 'exists:type_operations,id'],
-            'compte_id'        => ['required', 'exists:comptes,id'],
+            'devise_id'        => ['required', 'exists:devises,id'],
             'taux'             => ['nullable', 'numeric', 'min:0'],
             'montant'          => ['nullable', 'numeric', 'min:0'],
             'commentaire'      => ['nullable', 'string'],
@@ -32,8 +32,8 @@ class StoreFournisseurOperationRequest extends FormRequest
             'type_operation_id.required' => 'Le type d’opération est obligatoire.',
             'type_operation_id.exists'   => 'Le type d’opération sélectionné est invalide.',
 
-            'compte_id.required'         => 'Le compte est obligatoire.',
-            'compte_id.exists'           => 'Le compte sélectionné est invalide.',
+            'devise_id.required'         => 'Le devise est obligatoire.',
+            'devise_id.exists'           => 'Le devise sélectionné est invalide.',
 
             'taux.numeric'               => 'Le taux doit être un nombre.',
             'taux.min'                   => 'Le taux doit être supérieur ou égal à 0.',

@@ -4,6 +4,7 @@ namespace App\Modules\Comptabilite\Models;
 
 use App\Modules\Administration\Models\Fournisseur;
 use App\Modules\Administration\Models\User;
+use App\Modules\Settings\Models\Devise;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -15,7 +16,7 @@ class FournisseurOperation extends Model
     protected $fillable = [
         'fournisseur_id',
         'type_operation_id',
-        'compte_id',
+        'devise_id',
         'taux',
         'montant',
         'commentaire',
@@ -33,9 +34,9 @@ class FournisseurOperation extends Model
         return $this->belongsTo(TypeOperation::class)->whereNull('type_operations.deleted_at');
     }
 
-    public function compte() : BelongsTo
+    public function devise() : BelongsTo
     {
-        return $this->belongsTo(Compte::class)->whereNull('comptes.deleted_at');
+        return $this->belongsTo(Devise::class)->whereNull('devises.deleted_at');
     }
 
     public function createdBy() : BelongsTo

@@ -3,7 +3,7 @@
 namespace App\Modules\Settings\Models;
 
 use App\Modules\Administration\Models\User;
-use App\Modules\Comptabilite\Models\Compte;
+use App\Modules\Comptabilite\Models\FournisseurOperation;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -58,8 +58,8 @@ class Devise extends Model
         );
     }
 
-    public function comptes() : HasMany
+    public function fournisseurOperation() : HasMany
     {
-        return $this->hasMany(Compte::class)->whereNull('comptes.deleted_at');
+        return $this->hasMany(FournisseurOperation::class)->whereNull('fournisseur_operations.deleted_at');
     }
 }

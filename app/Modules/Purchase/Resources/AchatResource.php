@@ -27,12 +27,16 @@ class AchatResource extends JsonResource
             }
         }
 
+        $poid_total = $this->barres->sum('poid_pure');
+        $carratMoy = (float) $this->carratMoyenne($this->id);
+
         return [
             'id' => $this->id ?? null,
             'reference' => $this->reference,
             'commentaire' => $this->commentaire,
-            'poids_total' => number_format($this->barres->sum('poid_pure'), 3),
+            'poids_total' => number_format($poid_total, 3),
             'carrat_moyenne' => $this->carratMoyenne($this->id),
+            'pureter_moyenne' => ($poid_total * $carratMoy) / 24,
             'etat_achat' => $this->etat,
             'achat_status' => $this->status,
             'fixed_achat' => $fixed_achat,

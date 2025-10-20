@@ -8,6 +8,7 @@ use App\Modules\Fixing\Models\Fixing;
 use App\Modules\Fixing\Models\FixingBarre;
 use App\Modules\Fondation\Models\Fondation;
 use App\Modules\Purchase\Models\Barre;
+use Illuminate\Support\Facades\DB;
 
 trait Helper
 {
@@ -115,6 +116,9 @@ trait Helper
         return $barre;
     }
 
+    /**
+     * Cette methode retourne le montant correspondant a chaque barre
+     */
     public function montantBarre($id, $unit_price)
     {
         // Retrieve barre safely
@@ -151,7 +155,9 @@ trait Helper
         return number_format($montant, 2);
     }
 
-
+    /**
+     * Cette methode retourne le montant total de chaque fixing
+     */
     public function montantFixing($fixing_id)
     {
         $fixing = Fixing::find($fixing_id);
@@ -171,6 +177,44 @@ trait Helper
     }
 
     /**
+     * Cette methode retourne un tableau de grand total montant d'un fournisseur pour chaque devise
+     */
+    public function montantTotalFixing($fournisseurId)
+    {
+        $fixings = Fixing::with('devise')
+            ->where('fournisseur_id', $fournisseurId)
+            ->get();
+
+        if ($fixings->isEmpty()) {
+            return [];
+        }
+
+        $totals = [];
+
+        foreach ($fixings as $fixing) {
+            $montant = (float) $this->montantFixing($fixing->id);
+
+            $symbole = $fixing->devise->symbole ?? 'N/A';
+
+            if (!isset($totals[$symbole])) {
+                $totals[$symbole] = 0;
+            }
+
+            $totals[$symbole] += $montant;
+        }
+
+        $result = [];
+        foreach ($totals as $symbole => $montant) {
+            $result[] = [
+                'symbole' => $symbole,
+                'montant' => $montant,
+            ];
+        }
+
+        return $result;
+    }
+
+    /**
      * Cette methode retourne la pureter de l'or
      */
     public function pureter($poid, $carrat)
@@ -181,42 +225,57 @@ trait Helper
     }
 
     /**
-     * Cette method est pour retourner le solde d'un compte donner
+     * Cette method est pour retourner le solde d'un fournisseur donner par rapport a ces opérations
      */
-    public function soldeCompte($compte_id, $solde_initial = 0)
+    public function soldeFournisseurOperations($fournisseurId)
     {
-        $entreeFournisseur = FournisseurOperation::where('compte_id', $compte_id)->whereHas('typeOperation', function ($query) {
-                                $query->where('nature', 1);
-                             })->sum('montant');
-
-        $sortieFournisseur = FournisseurOperation::where('compte_id', $compte_id)->whereHas('typeOperation', function ($query) {
-                                $query->where('nature', 0);
-                             })->sum('montant');
-
-        $solde = ($solde_initial + $entreeFournisseur) - $sortieFournisseur;
-
-        return $solde ?? 0;
+        return FournisseurOperation::where('fournisseur_id', $fournisseurId)
+            ->join('type_operations as to', 'fournisseur_operations.type_operation_id', '=', 'to.id')
+            ->join('devises as d', 'fournisseur_operations.devise_id', '=', 'd.id')
+            ->select(
+                'd.symbole',
+                DB::raw('SUM(CASE WHEN to.nature = 1 THEN fournisseur_operations.montant ELSE -fournisseur_operations.montant END) as montant')
+            )
+            ->groupBy('d.id', 'd.symbole')
+            ->get()
+            ->toArray();
     }
 
     /**
-     * Cette method est pour retourner le solde d'un fournisseur donner
+     * Cette method retourne le solde global du fournisseur par devise
      */
-    public function soldeFournisseur($fournisseur_id)
+    public function soldeGlobalFournisseur($fournisseurId)
     {
-        $fixing = Fixing::where('fournisseur_id', $fournisseur_id)->first();
+        // Get both datasets
+        $operations = $this->soldeFournisseurOperations($fournisseurId);
+        $fixings = $this->montantTotalFixing($fournisseurId);
 
-        $entreeFournisseur = FournisseurOperation::where('fournisseur_id', $fournisseur_id)->whereHas('typeOperation', function ($query) {
-                                $query->where('nature', 1);
-                             })->sum('montant');
+        // Convert to associative arrays for easy merging
+        $totals = [];
 
-        $sortieFournisseur = FournisseurOperation::where('fournisseur_id', $fournisseur_id)->whereHas('typeOperation', function ($query) {
-                                $query->where('nature', 0);
-                             })->sum('montant');
+        // Add operations balances
+        foreach ($operations as $op) {
+            $symbole = $op['symbole'];
+            $montant = (float) $op['montant'];
+            $totals[$symbole] = ($totals[$symbole] ?? 0) + $montant;
+        }
 
-        $montantFixing = $this->montantFixing($fixing->id);
+        // Add fixing balances
+        foreach ($fixings as $fix) {
+            $symbole = $fix['symbole'];
+            $montant = (float) $fix['montant'];
+            $totals[$symbole] = ($totals[$symbole] ?? 0) + $montant;
+        }
 
-        $solde = ($montantFixing + $entreeFournisseur) - $sortieFournisseur;
+        // Convert back to array format
+        $result = [];
+        foreach ($totals as $symbole => $montant) {
+            $result[] = [
+                'symbole' => $symbole,
+                'montant' => number_format($montant, 2),
+            ];
+        }
 
-        return number_format($solde, 2) ?? 0;
+        return $result;
     }
 }
