@@ -18,6 +18,7 @@ class Client extends Model
         'nom_complet',
         'raison_sociale',
         'pays',
+        'type_client',
         'ville',
         'adresse',
         'telephone',
