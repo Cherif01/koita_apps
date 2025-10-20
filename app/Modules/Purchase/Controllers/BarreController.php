@@ -48,46 +48,48 @@ class BarreController extends Controller
         try {
             $data = $request->validated();
 
+            $now = Carbon::now();
+            $newFixing = null;
+            $insertData = [];
+            $updateCount = 0;
+            $insertCount = 0;
+
             // Make fixing optional
             $fixing = $data['fixing'] ?? null;
 
             if (!empty($fixing) && is_array($fixing)) {
-                // Safely check devise if provided
-                $devise = !empty($fixing['devise_id'])
-                    ? Devise::find($fixing['devise_id'])
-                    : null;
+                if(!is_null($fixing['bourse']) && !is_null($fixing['discount']) && $fixing['bourse'] > 0 && $fixing['discount'] > 0){
+                    // Safely check devise if provided
+                    $devise = !empty($fixing['devise_id'])
+                        ? Devise::find($fixing['devise_id'])
+                        : null;
 
-                if ($devise && Str::upper($devise->symbole) === 'USD') {
-                    $bourse = $fixing['bourse'] ?? 0;
-                    $discount = $fixing['discount'] ?? 0;
+                    if ($devise && Str::upper($devise->symbole) === 'USD') {
+                        $bourse = $fixing['bourse'] ?? 0;
+                        $discount = $fixing['discount'] ?? 0;
 
-                    // calculate unit_price if missing or zero
-                    $fixing['unit_price'] = $fixing['unit_price'] ?? (($bourse / 34) - $discount);
-                }
+                        // calculate unit_price if missing or zero
+                        $fixing['unit_price'] = $fixing['unit_price'] ?? (($bourse / 34) - $discount);
+                    }
 
-                // Ensure we have a valid achat before creating Fixing
-                $achat = Achat::find($data['barres'][0]['achat_id']);
+                    // Ensure we have a valid achat before creating Fixing
+                    $achat = Achat::find($data['barres'][0]['achat_id']);
 
-                if ($achat) {
-                    $achat->update(['status' => 'terminer']);
-                    
-                    $newFixing = Fixing::create([
-                        'fournisseur_id' => $achat->fournisseur_id,
-                        'bourse' => $fixing['bourse'] ?? null,
-                        'discount' => $fixing['discount'] ?? null,
-                        'unit_price' => $fixing['unit_price'] ?? null,
-                        'devise_id' => $fixing['devise_id'] ?? null,
-                        'status' => "confirmer",
-                        'created_by' => Auth::id(),
-                    ]);
+                    if ($achat) {
+                        $achat->update(['status' => 'terminer']);
+
+                        $newFixing = Fixing::create([
+                            'fournisseur_id' => $achat->fournisseur_id,
+                            'bourse' => $fixing['bourse'] ?? null,
+                            'discount' => $fixing['discount'] ?? null,
+                            'unit_price' => $fixing['unit_price'] ?? null,
+                            'devise_id' => $fixing['devise_id'] ?? null,
+                            'status' => "confirmer",
+                            'created_by' => Auth::id(),
+                        ]);
+                    }
                 }
             }
-
-            $now = Carbon::now();
-
-            $insertData = [];
-            $updateCount = 0;
-            $insertCount = 0;
 
             foreach ($data['barres'] as $item) {
                 // If ID exists → update existing barre
@@ -119,15 +121,18 @@ class BarreController extends Controller
 
             // Bulk insert new barres
             foreach ($insertData as $item) {
+                $item['is_fixed'] = $newFixing ? true : false;
                 $barre = Barre::create($item);
 
                 // Filling the pivot table
-                FixingBarre::create([
-                    'fixing_id' => $newFixing->id,
-                    'barre_id' => $barre->id,
-                    'created_by' => Auth::id(),
-                    'created_at' => $now,
-                ]);
+                if($newFixing){
+                    FixingBarre::create([
+                        'fixing_id' => $newFixing->id,
+                        'barre_id' => $barre->id,
+                        'created_by' => Auth::id(),
+                        'created_at' => $now,
+                    ]);
+                }
             }
 
             DB::commit();
