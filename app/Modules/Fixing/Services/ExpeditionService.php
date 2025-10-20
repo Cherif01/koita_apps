@@ -196,7 +196,6 @@ class ExpeditionService
                 // 💎 Pureté locale = ((poids * carat) / 24) / carrat_moyen
              $purete_local    = ($poids_fondu * $carrat_fondu) / 24;
                
-
                 $details[] = [
                     'id_expedition' => $expedition->id,
                     'poids_fondu'   => round($poids_fondu, 3),
