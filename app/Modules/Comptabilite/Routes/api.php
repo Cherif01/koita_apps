@@ -2,11 +2,14 @@
 
 use App\Modules\Comptabilite\Controllers\CompteController;
 use App\Modules\Comptabilite\Controllers\FournisseurOperationController;
+use App\Modules\Comptabilite\Controllers\OperationClientController;
 use Illuminate\Support\Facades\Route;
 use App\Modules\Comptabilite\Controllers\TypeOperationController;
 
 Route::middleware('auth:sanctum')->prefix('comptabilite')->group(function () {
     Route::apiResource('type-operations', TypeOperationController::class);
+    Route::apiResource('operations-clients', OperationClientController::class);
+    Route::apiResource('operations-divers', OperationClientController::class);
 
     // Routes des comptes
     Route::get('comptes/restore/{id}', [CompteController::class, 'restore']);
