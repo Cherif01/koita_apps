@@ -10,6 +10,7 @@ use App\Modules\Settings\Models\Client;
 use App\Modules\Settings\Resources\ClientResource;
 use App\Modules\Settings\Resources\LivraisonNonFixeeResource;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Collection;
 use Exception;
 
 class ClientService
@@ -21,16 +22,13 @@ class ClientService
     {
         try {
             $data['created_by'] = Auth::id();
-
-            // ✅ S'assurer qu'on récupère un vrai modèle (pas un array)
-            $client = Client::create($data);
-            $client->refresh();
+            $client = Client::create($data)->refresh();
 
             return response()->json([
                 'status'  => 200,
                 'message' => 'Client créé avec succès.',
                 'data'    => new ClientResource(
-                    $client->load(['createur', 'modificateur', 'initLivraisons', 'fixings'])
+                    $client->with(['createur', 'modificateur', 'initLivraisons', 'fixings'])->first()
                 ),
             ]);
         } catch (Exception $e) {
@@ -51,14 +49,14 @@ class ClientService
             $client = Client::findOrFail($id);
             $data['modify_by'] = Auth::id();
             $client->update($data);
-            $client->refresh();
+
+            $client = Client::with(['createur', 'modificateur', 'initLivraisons', 'fixings'])
+                ->find($id);
 
             return response()->json([
                 'status'  => 200,
                 'message' => 'Client mis à jour avec succès.',
-                'data'    => new ClientResource(
-                    $client->load(['createur', 'modificateur', 'initLivraisons', 'fixings'])
-                ),
+                'data'    => new ClientResource($client),
             ]);
         } catch (Exception $e) {
             return response()->json([
@@ -75,8 +73,7 @@ class ClientService
     public function delete(int $id)
     {
         try {
-            $client = Client::findOrFail($id);
-            $client->delete();
+            Client::findOrFail($id)->delete();
 
             return response()->json([
                 'status'  => 200,
@@ -92,7 +89,7 @@ class ClientService
     }
 
     /**
-     * 🔹 Récupérer tous les clients avec leurs livraisons et fixings
+     * 🔹 Récupérer tous les clients
      */
     public function getAll()
     {
@@ -178,9 +175,7 @@ class ClientService
         $entreesUSD = $getTotalParDevise('USD', 1);
         $entreesGNF = $getTotalParDevise('GNF', 1);
 
-        $fixings = FixingClient::where('id_client', $id_client)
-            ->with('devise')
-            ->get();
+        $fixings = FixingClient::with('devise')->where('id_client', $id_client)->get();
 
         $sortiesUSD = 0;
         $sortiesGNF = 0;
@@ -207,55 +202,63 @@ class ClientService
      */
     public function getReleveClient(int $id_client): array
     {
+        // ✅ Récupération des opérations
         $operations = OperationClient::with(['typeOperation', 'devise'])
             ->where('id_client', $id_client)
             ->get()
             ->map(function ($op) {
-                $nature = $op->typeOperation?->nature; // 1=entrée, 2=sortie
-                return [
+                $nature = $op->typeOperation?->nature; // 1 = entrée, 2 = sortie
+
+                return collect([
                     'date'    => $op->created_at?->format('Y-m-d H:i:s'),
                     'type'    => 'operation_client',
                     'libelle' => $op->typeOperation?->libelle ?? 'Opération client',
                     'devise'  => $op->devise?->symbole ?? '',
                     'debit'   => $nature == 2 ? (float) $op->montant : 0,
                     'credit'  => $nature == 1 ? (float) $op->montant : 0,
-                ];
+                ]);
             });
 
-        $fixings = FixingClient::with(['devise'])
+        // ✅ Récupération des fixings
+        $fixings = FixingClient::with('devise')
             ->where('id_client', $id_client)
             ->get()
             ->map(function ($fix) {
                 $calcul = app(FixingClientService::class)->calculerFacture($fix->id);
 
-                return [
+                return collect([
                     'date'    => $fix->created_at?->format('Y-m-d H:i:s'),
                     'type'    => 'fixing',
                     'libelle' => 'Fixing #' . $fix->id,
                     'devise'  => $fix->devise?->symbole ?? '',
                     'debit'   => (float) ($calcul['total_facture'] ?? 0),
                     'credit'  => 0,
-                ];
+                ]);
             });
 
+        // ✅ Fusion sans erreur
         $operationsComplet = $operations
-            ->merge($fixings)
+            ->concat($fixings)
             ->sortBy('date')
             ->values();
 
+        // ✅ Calcul des soldes progressifs
         $soldeUSD = 0;
         $soldeGNF = 0;
 
         $operationsComplet = $operationsComplet->map(function ($op) use (&$soldeUSD, &$soldeGNF) {
-            if ($op['devise'] === 'USD') {
+            $devise = $op['devise'] ?? '';
+
+            if ($devise === 'USD') {
                 $soldeUSD += $op['credit'] - $op['debit'];
                 $op['solde_apres'] = round($soldeUSD, 2);
-            } elseif ($op['devise'] === 'GNF') {
+            } elseif ($devise === 'GNF') {
                 $soldeGNF += $op['credit'] - $op['debit'];
                 $op['solde_apres'] = round($soldeGNF, 2);
             } else {
                 $op['solde_apres'] = null;
             }
+
             return $op;
         });
 
