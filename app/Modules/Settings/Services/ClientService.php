@@ -204,4 +204,70 @@ class ClientService
             'solde_gnf' => $soldeGNF,
         ];
     }
+
+
+  public function getReleveClient(int $id_client): array
+{
+    // 1️⃣ Récupérer toutes les opérations clients (entrées et sorties)
+    $operations = OperationClient::with(['typeOperation', 'devise'])
+        ->where('id_client', $id_client)
+        ->get()
+        ->map(function ($op) {
+            return [
+                'date'        => $op->created_at?->format('Y-m-d H:i:s'),
+                'type'        => 'operation_client',
+                'libelle'     => $op->typeOperation?->libelle ?? 'Opération client',
+                'devise'      => $op->devise?->symbole ?? '',
+                'debit'       => $op->typeOperation?->nature == 0 ? (float) $op->montant : 0,
+                'credit'      => $op->typeOperation?->nature == 1 ? (float) $op->montant : 0,
+            ];
+        });
+
+    // 2️⃣ Récupérer tous les fixings (sorties)
+    $fixings = FixingClient::with(['devise'])
+        ->where('id_client', $id_client)
+        ->get()
+        ->map(function ($fix) {
+            $calcul = app(FixingClientService::class)
+                ->calculerFacture($fix->id);
+
+            return [
+                'date'        => $fix->created_at?->format('Y-m-d H:i:s'),
+                'type'        => 'fixing',
+                'libelle'     => 'Fixing #' . $fix->id,
+                'devise'      => $fix->devise?->symbole ?? '',
+                'debit'       => (float) ($calcul['total_facture'] ?? 0),
+                'credit'      => 0,
+            ];
+        });
+
+    // 3️⃣ Fusionner les deux collections et trier par date
+    $operationsComplet = $operations
+        ->merge($fixings)
+        ->sortBy('date')
+        ->values();
+
+    // 4️⃣ Calculer le solde progressif (USD & GNF séparés)
+    $soldeUSD = 0;
+    $soldeGNF = 0;
+
+    $operationsComplet = $operationsComplet->map(function ($op) use (&$soldeUSD, &$soldeGNF) {
+        if ($op['devise'] === 'USD') {
+            $soldeUSD += $op['credit'] - $op['debit'];
+            $op['solde_apres'] = round($soldeUSD, 2);
+        } elseif ($op['devise'] === 'GNF') {
+            $soldeGNF += $op['credit'] - $op['debit'];
+            $op['solde_apres'] = round($soldeGNF, 2);
+        } else {
+            $op['solde_apres'] = null;
+        }
+
+        return $op;
+    });
+
+    return $operationsComplet->toArray();
+}
+
+
+
 }

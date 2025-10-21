@@ -9,13 +9,14 @@ use App\Modules\Settings\Services\ClientService;
 
 class ClientResource extends JsonResource
 {
-    /**
-     * Transforme la ressource en tableau JSON sans valeurs nulles.
-     */
     public function toArray($request): array
     {
-        // 🔹 Calcul du solde actuel du client par devise
-        $solde = app(ClientService::class)->calculerSoldeClient($this->id);
+        // 🔹 Calcul du solde par devise
+        $clientService = app(ClientService::class);
+        $solde = $clientService->calculerSoldeClient($this->id);
+
+        // 🔹 Relevé complet (fixings + opérations clients)
+        $releve = $clientService->getReleveClient($this->id);
 
         return array_filter([
             'id'             => $this->id,
@@ -28,9 +29,12 @@ class ClientResource extends JsonResource
             'telephone'      => $this->telephone,
             'email'          => $this->email,
 
-            // 💰 Soldes par devise
+            // 💰 Soldes actuels
             'solde_usd'      => $solde['solde_usd'] ?? 0,
             'solde_gnf'      => $solde['solde_gnf'] ?? 0,
+
+            // 📊 Relevé du compte client (fixings + opérations)
+            'releve_client'  => $releve,
 
             // 🔹 Informations d’audit
             'created_by'     => $this->createur?->name,
@@ -48,7 +52,7 @@ class ClientResource extends JsonResource
                 $this->whenLoaded('fixings')
             ),
 
-            // 🔹 Livraisons initiales liées
+            // 🔹 Livraisons liées
             'init_livraisons' => InitLivraisonResource::collection(
                 $this->whenLoaded('initLivraisons')
             ),
