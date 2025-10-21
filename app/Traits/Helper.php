@@ -3,12 +3,14 @@
 
 namespace App\Traits;
 
+use App\Modules\Administration\Models\Fournisseur;
 use App\Modules\Comptabilite\Models\FournisseurOperation;
 use App\Modules\Fixing\Models\Fixing;
 use App\Modules\Fixing\Models\FixingBarre;
 use App\Modules\Fondation\Models\Fondation;
 use App\Modules\Purchase\Models\Barre;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 trait Helper
 {
@@ -280,4 +282,90 @@ trait Helper
 
         return $result;
     }
+
+    /**
+     * Cette method retourne toute l'historique des transaction d'un fournisseur
+     */
+    public function historiqueFournisseurComplet($fournisseurId)
+    {
+        // 🔹 Load fournisseur with fixings, operations, and devises
+        $fournisseur = Fournisseur::with([
+            'operations.typeOperation',
+            'operations.devise',
+            'fixings.devise',
+            'fixings.fixingBarres'
+        ])->find($fournisseurId);
+
+        // 🔹 1. Transform FournisseurOperations
+        $operations = $fournisseur->fournisseurOperations->map(function ($op) {
+            $nature = $op->typeOperation->nature;
+            $montant = $op->montant;
+
+            return [
+                'date' => $op->created_at,
+                'mouvement' => $op->commentaire,
+                'credit' => $nature == 1 ? $montant : 0,
+                'debit' => $nature == 0 ? $montant : 0,
+                'symbole' => $op->devise->symbole,
+            ];
+        });
+
+        // 🔹 2. Transform Fixings
+        $fixings = $fournisseur->fixings->map(function ($fixing) use ($fournisseur) {
+            $devise = $fixing->devise;
+            $hasBarres = $fixing->fixingBarres->count() > 0;
+
+            // Compute unit_price if USD
+            $unit_price = $fixing->unit_price;
+            if (Str::upper($devise->symbole) === 'USD') {
+                $unit_price = ($fixing->bourse / 34) - $fixing->discount;
+            }
+
+            // Compute montant
+            if ($hasBarres) {
+                $montant = $this->montantFixing($fixing->id);
+
+                $commentaire = "Fixing de {$fournisseur->name}";
+            } else {
+                $montant = ($unit_price / 22) * $fixing->poids_pro * $fixing->carrat_moyenne;
+
+                $commentaire = "Fixing provisoire par {$fournisseur->name}";
+            }
+
+            return [
+                'date' => $fixing->created_at,
+                'mouvement' => $commentaire,
+                'credit' => $montant,
+                'debit' => 0,
+                'symbole' => $devise->symbole,
+            ];
+        });
+
+        // 🔹 3. Merge both collections
+        $allTransactions = $operations->merge($fixings);
+
+        // 🔹 4. Group by devise and sort by date
+        $historiques = $allTransactions
+            ->sortBy('date')
+            ->groupBy('symbole')
+            ->map(function ($transactions) {
+                $solde = 0;
+
+                return $transactions->map(function ($t) use (&$solde) {
+                    $solde += $t['credit'];
+                    $solde -= $t['debit'];
+
+                    return [
+                        'date' => $t['date']->format('Y-m-d H:i:s'),
+                        'mouvement' => $t['mouvement'],
+                        'credit' => $t['credit'],
+                        'debit' => $t['debit'],
+                        'solde' => $solde,
+                    ];
+                });
+            });
+
+        return $historiques;
+    }
+
 }
