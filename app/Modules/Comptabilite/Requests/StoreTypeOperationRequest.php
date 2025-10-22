@@ -23,7 +23,7 @@ class StoreTypeOperationRequest extends FormRequest
     {
         return [
             'libelle' => 'required|string|max:150|unique:type_operations,libelle',
-            'nature'  => 'required|in:entree,sortie',
+            'nature'  => 'required|in:1,0',
         ];
     }
 
