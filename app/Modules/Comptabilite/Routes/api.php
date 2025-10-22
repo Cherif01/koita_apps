@@ -8,6 +8,7 @@ use App\Modules\Comptabilite\Controllers\TypeOperationController;
 
 Route::middleware('auth:sanctum')->prefix('v1/comptabilite')->group(function () {
     Route::apiResource('type-operations', TypeOperationController::class);
+     Route::apiResource('caisse', TypeOperationController::class);
     Route::apiResource('operations-clients', OperationClientController::class);
     Route::apiResource('operations-divers', OperationClientController::class);
 

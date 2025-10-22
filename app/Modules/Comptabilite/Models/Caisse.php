@@ -1,0 +1,48 @@
+<?php
+
+namespace App\Modules\Comptabilite\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use App\Modules\Settings\Models\Devise;
+use App\Modules\Comptabilite\Models\TypeOperation;
+use App\Modules\Administration\Models\User;
+
+class Caisse extends Model
+{
+    use HasFactory;
+
+    protected $table = 'caisses';
+
+    protected $fillable = [
+        'id_type_operation',
+        'id_devise',
+        'montant',
+        'commentaire',
+        'reference',
+        'date_operation',
+        'created_by',
+        'updated_by',
+    ];
+
+    // 🔹 Relations
+    public function devise()
+    {
+        return $this->belongsTo(Devise::class, 'id_devise');
+    }
+
+    public function typeOperation()
+    {
+        return $this->belongsTo(TypeOperation::class, 'id_type_operation');
+    }
+
+    public function createur()
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function modificateur()
+    {
+        return $this->belongsTo(User::class, 'updated_by');
+    }
+}
