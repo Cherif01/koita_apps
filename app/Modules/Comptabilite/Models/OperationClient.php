@@ -17,6 +17,8 @@ class OperationClient extends Model
 
     protected $fillable = [
         'id_client',
+        'reference',
+        'date_operation',
         'id_type_operation',
         'id_devise',
         'montant',

@@ -26,6 +26,9 @@ class StoreOperationClientRequest extends FormRequest
             'id_type_operation' => 'required|integer|exists:type_operations,id',
             'id_devise'         => 'required|integer|exists:devises,id',
             'montant'           => 'required|numeric|min:0',
+
+            'reference'         => 'nullable|string|max:100',
+            'date_operation'    => 'nullable|date',
             'commentaire'       => 'nullable|string|max:255',
         ];
     }
@@ -44,6 +47,10 @@ class StoreOperationClientRequest extends FormRequest
             'id_devise.exists'           => 'La devise sélectionnée est invalide.',
             'montant.required'           => 'Le montant est obligatoire.',
             'montant.numeric'            => 'Le montant doit être un nombre valide.',
+
+            'reference.string'           => 'La référence doit être une chaîne de caractères.',
+            'reference.max'              => 'La référence ne peut pas dépasser 100 caractères.',
+            'date_operation.date'        => 'La date de l’opération doit être une date valide.',
             'commentaire.string'         => 'Le commentaire doit être une chaîne de caractères valide.',
         ];
     }

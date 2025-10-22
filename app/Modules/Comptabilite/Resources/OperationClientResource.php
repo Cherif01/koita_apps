@@ -16,6 +16,7 @@ class OperationClientResource extends JsonResource
             'id'               => $this->id,
             'montant'          => (float) $this->montant,
             'commentaire'      => $this->commentaire,
+            
             'type_operation'   => new TypeOperationResource($this->whenLoaded('typeOperation')),
             'client'           => new ClientResource($this->whenLoaded('client')),
             'devise'           => new DeviseResource($this->whenLoaded('devise')),
