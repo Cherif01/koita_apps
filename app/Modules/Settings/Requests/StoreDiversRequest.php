@@ -26,11 +26,7 @@ class StoreDiversRequest extends FormRequest
             'raison_sociale'  => 'nullable|string|max:150',
             'telephone'       => 'nullable|string|max:30',
             'adresse'         => 'nullable|string|max:100',
-            'type'            => 'nullable|string|max:100',
-
-            // 🆕 Champs ajoutés
-            'reference'       => 'nullable|string|max:100',
-            'date_operation'  => 'nullable|date',
+            'type'            => 'nullable|string',
         ];
     }
 
@@ -48,8 +44,6 @@ class StoreDiversRequest extends FormRequest
             'telephone.max'          => 'Le numéro de téléphone ne peut pas dépasser 30 caractères.',
             'adresse.max'            => 'L’adresse ne peut pas dépasser 100 caractères.',
             'type.in'                => 'Le type doit être parmi : partenaire, client, fournisseur ou autre.',
-            'reference.max'          => 'La référence ne peut pas dépasser 100 caractères.',
-            'date_operation.date'    => 'La date d’opération doit être une date valide.',
         ];
     }
 

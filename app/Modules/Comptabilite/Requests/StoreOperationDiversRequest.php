@@ -27,6 +27,10 @@ class StoreOperationDiversRequest extends FormRequest
             'id_devise'         => 'required|integer|exists:devises,id',
             'montant'           => 'required|numeric|min:0',
             'commentaire'       => 'nullable|string|max:255',
+
+            // 🆕 Champs ajoutés
+            'reference'         => 'nullable|string|max:100',
+            'date_operation'    => 'nullable|date',
         ];
     }
 
@@ -44,6 +48,10 @@ class StoreOperationDiversRequest extends FormRequest
             'montant.required'           => 'Le montant est obligatoire.',
             'montant.numeric'            => 'Le montant doit être un nombre valide.',
             'commentaire.string'         => 'Le commentaire doit être une chaîne valide.',
+
+            // 🆕 Messages pour les nouveaux champs
+            'reference.max'              => 'La référence ne peut pas dépasser 100 caractères.',
+            'date_operation.date'        => 'La date d’opération doit être une date valide.',
         ];
     }
 
@@ -54,7 +62,7 @@ class StoreOperationDiversRequest extends FormRequest
     {
         throw new ValidationException($validator, response()->json([
             'status'  => 'error',
-            'message' => 'Erreur de validation.',
+            'message' => 'Erreur de validation des données de l’opération Divers.',
             'errors'  => $validator->errors(),
         ], 422));
     }

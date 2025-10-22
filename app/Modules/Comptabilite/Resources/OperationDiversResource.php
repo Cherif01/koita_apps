@@ -17,7 +17,7 @@ class OperationDiversResource extends JsonResource
             'montant'          => (float) $this->montant,
             'commentaire'      => $this->commentaire,
             'type_operation'   => new TypeOperationResource($this->whenLoaded('typeOperation')),
-           // 'divers'           => new DiversResource($this->whenLoaded('divers')),
+            'divers'           => new DiversResource($this->whenLoaded('divers')),
             'devise'           => new DeviseResource($this->whenLoaded('devise')),
             'created_by'       => $this->createur?->name,
             'updated_by'       => $this->modificateur?->name,
