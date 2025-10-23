@@ -25,8 +25,8 @@ class FondationResource extends JsonResource
             'carrat_dubai'    => (float) $this->carrat_dubai,
 
             // 🔹 Pureté locale & dubai
-            'purete_locale'   => $this->pureter($this->poids_fondu, $this->carrat_fondu),
-            'purete_dubai'    => $this->pureter($this->poids_dubai, $this->carrat_dubai),
+            'purete_locale'   => $this->arroundir(2,$this->pureter($this->poids_fondu, $this->carrat_fondu)),
+            'purete_dubai'    => $this->arroundir(2,$this->pureter($this->poids_dubai, $this->carrat_dubai)),
 
             // 🔹 Statuts & métadonnées
             'is_fixed'        => (bool) $this->is_fixed,
