@@ -1,38 +1,36 @@
 <?php
-
 namespace App\Modules\Settings\Resources;
 
+use App\Modules\Comptabilite\Resources\OperationDiversResource;
+use App\Modules\Settings\Services\DiversService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
-use App\Modules\Comptabilite\Resources\OperationDiversResource;
 
 class DiversResource extends JsonResource
 {
-    /**
-     * Transforme la ressource en tableau JSON propre (sans valeurs nulles)
-     */
     public function toArray(Request $request): array
     {
-        return array_filter([
-            'id'              => $this->id,
-            'name'            => $this->name,
-            'raison_sociale'  => $this->raison_sociale,
-            'telephone'       => $this->telephone,
-            'adresse'         => $this->adresse,
-            'type'            => $this->type,
+        $diversService = app(DiversService::class);
+        $solde         = $diversService->calculerSoldeDivers($this->id);
 
-            // 🔹 Relations principales
-            'operations'      => OperationDiversResource::collection(
+        return array_filter([
+            'id'             => $this->id,
+            'name'           => $this->name,
+            'raison_sociale' => $this->raison_sociale,
+            'telephone'      => $this->telephone,
+            'adresse'        => $this->adresse,
+            'type'           => $this->type,
+            'solde_usd'      => $solde['usd'] ?? 0,
+            'solde_gnf'      => $solde['gnf'] ?? 0,
+
+            'operations'     => OperationDiversResource::collection(
                 $this->whenLoaded('operationsDivers')
             ),
 
-            // 🔹 Audit
-            'created_by'      => $this->createur?->name,
-            'updated_by'      => $this->modificateur?->name,
-
-            // 🔹 Dates formatées
-            'created_at'      => $this->created_at?->format('Y-m-d H:i:s'),
-            'updated_at'      => $this->updated_at?->format('Y-m-d H:i:s'),
-        ], fn($value) => !is_null($value));
+            'created_by'     => $this->createur?->name,
+            'updated_by'     => $this->modificateur?->name,
+            'created_at'     => $this->created_at?->format('Y-m-d H:i:s'),
+            'updated_at'     => $this->updated_at?->format('Y-m-d H:i:s'),
+        ], fn($value) => ! is_null($value));
     }
 }

@@ -27,6 +27,10 @@ class OperationClient extends Model
         'updated_by',
     ];
 
+
+     protected $casts = [
+        'date_operation' => 'datetime',
+    ];
     // ==============================
     // 🔹 RELATIONS
     // ==============================

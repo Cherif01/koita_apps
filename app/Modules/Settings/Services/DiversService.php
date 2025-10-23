@@ -2,9 +2,11 @@
 
 namespace App\Modules\Settings\Services;
 
+use App\Modules\Comptabilite\Models\OperationDivers;
 use App\Modules\Settings\Models\Divers;
 use App\Modules\Settings\Resources\DiversResource;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use Exception;
 
 class DiversService
@@ -127,5 +129,31 @@ class DiversService
                 'error'   => $e->getMessage(),
             ]);
         }
+    }
+
+
+
+    public function calculerSoldeDivers(int $id_divers, int $cacheMinutes = 5): array
+    {
+        return Cache::remember("solde_divers_{$id_divers}", now()->addMinutes($cacheMinutes), function () use ($id_divers) {
+            $operations = OperationDivers::with(['typeOperation', 'devise'])
+                ->where('id_divers', $id_divers)
+                ->get();
+
+            $soldes = [];
+
+            foreach ($operations as $op) {
+                $devise = strtoupper($op->devise?->symbole ?? 'GNF');
+                $nature = $op->typeOperation?->nature ?? 1;
+                $montant = (float) $op->montant;
+
+                if (!isset($soldes[$devise])) $soldes[$devise] = 0;
+                $soldes[$devise] += $nature == 1 ? $montant : -$montant;
+            }
+
+            return collect($soldes)
+                ->mapWithKeys(fn($s, $d) => [strtolower($d) => round($s, 2)])
+                ->toArray();
+        });
     }
 }

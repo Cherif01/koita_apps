@@ -25,6 +25,10 @@ class Caisse extends Model
         'updated_by',
     ];
 
+
+     protected $casts = [
+        'date_operation' => 'datetime',
+    ];
     // 🔹 Relations
     public function devise()
     {
