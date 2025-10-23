@@ -8,6 +8,7 @@ use App\Modules\Fixing\Models\Fixing;
 use App\Modules\Fixing\Models\FixingBarre;
 use App\Modules\Fondation\Models\Fondation;
 use App\Modules\Purchase\Models\Barre;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -304,7 +305,8 @@ trait Helper
         $operations = $fournisseur->operations?->map(function ($op) {
             $nature = $op->typeOperation?->nature ?? 0;
             $montant = (float) ($op->montant ?? 0);
-            $mouvement = ($op->reference ?? '') . ': ' . ($op->commentaire ?? '') . ' le ' . ($op->date_operation ?? '');
+            $dateOperation = $op->date_operation ? Carbon::parse($op->date_operation)->format('d-m-Y') : '';
+            $mouvement = ($op->reference ?? '') . ': ' . ($op->commentaire ?? '') . ' le ' . $dateOperation;
 
             return [
                 'date' => $op->created_at,

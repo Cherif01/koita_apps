@@ -3,17 +3,27 @@
 namespace App\Modules\Comptabilite\Resources;
 
 use App\Modules\Administration\Resources\FournisseurResource;
+use App\Traits\Helper;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 class FournisseurOperationResource extends JsonResource
 {
+    use Helper;
+
     public function toArray(Request $request)
     {
         return [
             'id' => $this->id,
 
-            'fournisseur' => new FournisseurResource($this->whenLoaded('fournisseur')),
+            'fournisseur' => [
+                'id' => $this->fournisseur->id,
+                'name' => $this->fournisseur->name,
+                'adresse' => $this->fournisseur->adresse ?? null,
+                'telephone' => $this->fournisseur->telephone,
+                'solde' => $this->soldeGlobalFournisseur($this->fournisseur->id),
+                'image' => is_null($this->fournisseur->image) ? asset('/images/male.jpg') : asset('/storage/images/fournisseurs/'.$this->fournisseur->image)
+            ],
 
             'type_operation' => [
                 'id' => $this->typeOperation->id,
