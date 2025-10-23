@@ -14,7 +14,7 @@ class CaisseResource extends JsonResource
         return array_filter([
             'id'               => $this->id,
             'reference'        => $this->reference,
-            'date_operation'   => $this->date_operation?->format('Y-m-d'),
+           // 'date_operation'   => $this->date_operation?->format('Y-m-d'),
             'montant'          => (float) $this->montant,
             'commentaire'      => $this->commentaire,
             'type_operation'   => new TypeOperationResource($this->whenLoaded('typeOperation')),
