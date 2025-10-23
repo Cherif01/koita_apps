@@ -12,6 +12,7 @@ class DiversResource extends JsonResource
     {
         $diversService = app(DiversService::class);
         $solde         = $diversService->calculerSoldeDivers($this->id);
+        $releve = $diversService->getReleveDivers($this->id);
 
         return array_filter([
             'id'             => $this->id,

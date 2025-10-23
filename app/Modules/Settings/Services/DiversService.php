@@ -1,13 +1,12 @@
 <?php
-
 namespace App\Modules\Settings\Services;
 
 use App\Modules\Comptabilite\Models\OperationDivers;
 use App\Modules\Settings\Models\Divers;
 use App\Modules\Settings\Resources\DiversResource;
+use Exception;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
-use Exception;
 
 class DiversService
 {
@@ -18,7 +17,7 @@ class DiversService
     {
         try {
             $data['created_by'] = Auth::id();
-            $divers = Divers::create($data);
+            $divers             = Divers::create($data);
 
             return response()->json([
                 'status'  => 200,
@@ -42,7 +41,7 @@ class DiversService
     public function update(int $id, array $data)
     {
         try {
-            $divers = Divers::findOrFail($id);
+            $divers             = Divers::findOrFail($id);
             $data['updated_by'] = Auth::id();
             $divers->update($data);
 
@@ -131,8 +130,6 @@ class DiversService
         }
     }
 
-
-
     public function calculerSoldeDivers(int $id_divers, int $cacheMinutes = 5): array
     {
         return Cache::remember("solde_divers_{$id_divers}", now()->addMinutes($cacheMinutes), function () use ($id_divers) {
@@ -143,11 +140,14 @@ class DiversService
             $soldes = [];
 
             foreach ($operations as $op) {
-                $devise = strtoupper($op->devise?->symbole ?? 'GNF');
-                $nature = $op->typeOperation?->nature ?? 1;
+                $devise  = strtoupper($op->devise?->symbole ?? 'GNF');
+                $nature  = $op->typeOperation?->nature ?? 1;
                 $montant = (float) $op->montant;
 
-                if (!isset($soldes[$devise])) $soldes[$devise] = 0;
+                if (! isset($soldes[$devise])) {
+                    $soldes[$devise] = 0;
+                }
+
                 $soldes[$devise] += $nature == 1 ? $montant : -$montant;
             }
 
@@ -156,4 +156,51 @@ class DiversService
                 ->toArray();
         });
     }
+
+   public function getReleveDivers(int $id_divers): array
+{
+    $operations = OperationDivers::with(['typeOperation', 'devise'])
+        ->where('id_divers', $id_divers)
+        ->orderByDesc('date_operation')
+        ->orderByDesc('created_at')
+        ->get()
+        ->map(function ($op) {
+            $nature = $op->typeOperation?->nature; // 1 = entrée, 0 = sortie
+
+            return [
+                'date'       => $op->date_operation
+                    ? (is_string($op->date_operation)
+                        ? $op->date_operation
+                        : $op->date_operation->format('Y-m-d H:i:s'))
+                    : $op->created_at?->format('Y-m-d H:i:s'),
+
+                'reference'  => $op->reference ?? '',
+                'libelle'    => $op->typeOperation?->libelle ?? 'Opération Divers',
+                'devise'     => $op->devise?->symbole ?? '',
+                'commentaire'=>$op->commentaire?? '',
+                'debit'      => $nature == 0 ? (float) $op->montant : 0,
+                'credit'     => $nature == 1 ? (float) $op->montant : 0,
+            ];
+        });
+
+    $soldeUSD = 0;
+    $soldeGNF = 0;
+
+    $operations = $operations->reverse()->map(function ($op) use (&$soldeUSD, &$soldeGNF) {
+        if ($op['devise'] === 'USD') {
+            $soldeUSD += $op['credit'] - $op['debit'];
+            $op['solde_apres'] = round($soldeUSD, 2);
+        } elseif ($op['devise'] === 'GNF') {
+            $soldeGNF += $op['credit'] - $op['debit'];
+            $op['solde_apres'] = round($soldeGNF, 2);
+        } else {
+            $op['solde_apres'] = null;
+        }
+
+        return $op;
+    })->reverse()->values();
+
+    return $operations->toArray();
+}
+
 }
