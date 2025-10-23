@@ -20,7 +20,7 @@ class InitLivraisonResource extends JsonResource
             'id'             => $this->id,
             'reference'      => $this->reference ?? '',
             'commentaire'    => $this->commentaire ?? '',
-            'status'         => $this->statut ?? 'encours',
+            'status'         => $this->statut ?? ' ',
 
             // 🔹 Client lié
             'client'         => new ClientResource($this->whenLoaded('client')),
