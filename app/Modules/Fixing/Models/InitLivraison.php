@@ -19,7 +19,7 @@ class InitLivraison extends Model
         'reference',
         'id_client',
         'commentaire',
-        'status',
+        'statut',
         'created_by',
         'modify_by',
     ];
