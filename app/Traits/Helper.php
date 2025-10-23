@@ -302,7 +302,7 @@ trait Helper
         }
 
         // ✅ 1. Transform operations (if any)
-        $operations = $fournisseur->fournisseurOperations?->map(function ($op) {
+        $operations = $fournisseur->operations?->map(function ($op) {
             $nature = $op->typeOperation?->nature ?? 0;
             $montant = (float) ($op->montant ?? 0);
 
