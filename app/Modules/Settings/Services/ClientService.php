@@ -164,20 +164,23 @@ class ClientService
      */
     public function calculerSoldeClient(int $id_client): array
     {
+        // 🔹 Fonction interne pour calculer le total par devise et par nature
         $getTotalParDevise = function (string $deviseSymbole, int $nature) use ($id_client) {
             return OperationClient::where('id_client', $id_client)
-                ->whereHas('typeOperation', fn($q) => $q->where('nature', $nature)) // 1=entrée
+                ->whereHas('typeOperation', fn($q) => $q->where('nature', $nature)) // 1 = entrée, 0 = sortie
                 ->whereHas('devise', fn($q) => $q->where('symbole', $deviseSymbole))
                 ->sum('montant');
         };
 
+        // 🔹 Totaux des opérations
         $entreesUSD = $getTotalParDevise('USD', 1);
         $entreesGNF = $getTotalParDevise('GNF', 1);
 
-        $fixings = FixingClient::with('devise')->where('id_client', $id_client)->get();
+        $sortiesUSD = $getTotalParDevise('USD', 0);
+        $sortiesGNF = $getTotalParDevise('GNF', 0);
 
-        $sortiesUSD = 0;
-        $sortiesGNF = 0;
+        // 🔹 Factures (sorties automatiques liées aux fixings)
+        $fixings = FixingClient::with('devise')->where('id_client', $id_client)->get();
 
         foreach ($fixings as $fixing) {
             $calcul  = app(FixingClientService::class)->calculerFacture($fixing->id);
@@ -190,6 +193,7 @@ class ClientService
             }
         }
 
+        // 🔹 Solde final
         return [
             'solde_usd' => round($entreesUSD - $sortiesUSD, 2),
             'solde_gnf' => round($entreesGNF - $sortiesGNF, 2),
