@@ -334,96 +334,94 @@ class FixingClientService
     //     ];
     // }
     public function calculerFacture(int $id_fixing): array
-{
-    $fixing = FixingClient::with('client')->find($id_fixing);
+    {
+        $fixing = FixingClient::with('client')->find($id_fixing);
 
-    if (! $fixing) {
+        if (! $fixing) {
+            return [
+                'status'  => 404,
+                'message' => "Fixing introuvable avec l’ID {$id_fixing}.",
+            ];
+        }
+
+        // 🔹 Constantes
+        $densite    = 22;
+        $bourse     = (float) $fixing->bourse;
+        $discompte  = (float) $fixing->discompte;
+        $typeClient = $fixing->client?->type_client ?? 'local';
+
+        // 🔹 Récupération des fondations liées
+        $fondations = Fondation::where('id_fixing', $fixing->id)->get();
+
+        if ($fondations->isEmpty()) {
+            return [
+                'id_fixing' => $fixing->id,
+                'message'   => 'Aucune fondation trouvée pour ce fixing.',
+            ];
+        }
+
+        // === Étape 1 : Calculs par fondation ===
+        $details            = [];
+        $poidsTotal         = 0;
+        $sommeCaratPonderee = 0;
+        $pureteTotale       = 0;
+
+        foreach ($fondations as $fondation) {
+            $poids = (float) $fondation->poids_fondu;
+            $carat = (float) $fondation->carrat_fondu;
+
+            // 💎 Pureté brute (poids d’or pur)
+            $purete = ($poids * $carat) / 24;
+
+            $poidsTotal += $poids;
+            $sommeCaratPonderee += $poids * $carat;
+            $pureteTotale += $purete;
+
+            $details[] = [
+                'id_fondation'  => $fondation->id,
+                'reference'     => $fondation->initFondation?->reference ?? null,
+                'poids_fondu'   => round($poids, 2),
+                'carrat_fondu'  => round($carat, 2),
+                'purete'        => round($purete, 2),
+                'montant_barre' => 0, // sera défini après le calcul du prix unitaire
+            ];
+        }
+
+        // === Étape 2 : Calculs globaux ===
+        $carratMoyen  = $poidsTotal > 0 ? $sommeCaratPonderee / $poidsTotal : 0;
+        $carratMoyen  = round($carratMoyen, 2);
+        $pureteTotale = round($pureteTotale, 3);
+
+        // === Étape 3 : Calcul du prix unitaire selon le type de client ===
+        if ($typeClient === 'local') {
+            $prixUnitaire = ($bourse / 34) - $discompte;
+        } else {
+            $prixUnitaire = ($bourse / 31.10347) - (32 * $discompte);
+        }
+
+        // === Étape 4 : Calcul du montant_barre et total_facture ===
+        $totalFacture = 0;
+        foreach ($details as &$detail) {
+            $detail['montant_barre'] = round($detail['purete'] * $prixUnitaire, 2);
+            $totalFacture += $detail['montant_barre'];
+        }
+        unset($detail); // bonne pratique
+
+        // === Étape 5 : Arrondis et retour final ===
+        $prixUnitaireTronque = $prixUnitaire ? $this->truncate($prixUnitaire, 2) : null;
+        $totalFactureTronque = round($totalFacture, 2);
+
         return [
-            'status'  => 404,
-            'message' => "Fixing introuvable avec l’ID {$id_fixing}.",
+            'id_fixing'     => $fixing->id,
+            'type_client'   => $typeClient,
+            'prix_unitaire' => $prixUnitaireTronque,
+            'poids_total'   => round($poidsTotal, 2),
+            'carrat_moyen'  => $carratMoyen,
+            'purete_totale' => $pureteTotale,
+            'fondations'    => $details,
+            'total_facture' => $totalFactureTronque,
         ];
     }
-
-    // 🔹 Constantes
-    $densite    = 22;
-    $bourse     = (float) $fixing->bourse;
-    $discompte  = (float) $fixing->discompte;
-    $typeClient = $fixing->client?->type_client ?? 'local';
-
-    // 🔹 Récupération des fondations liées
-    $fondations = Fondation::where('id_fixing', $fixing->id)->get();
-
-    if ($fondations->isEmpty()) {
-        return [
-            'id_fixing' => $fixing->id,
-            'message'   => 'Aucune fondation trouvée pour ce fixing.',
-        ];
-    }
-
-    // === Étape 1 : Calculs par fondation ===
-    $details            = [];
-    $poidsTotal         = 0;
-    $sommeCaratPonderee = 0;
-    $pureteTotale       = 0;
-
-    foreach ($fondations as $fondation) {
-        $poids = (float) $fondation->poids_fondu;
-        $carat = (float) $fondation->carrat_fondu;
-
-        // 💎 Pureté brute (poids d’or pur)
-        $purete = ($poids * $carat) / 24;
-
-        $poidsTotal         += $poids;
-        $sommeCaratPonderee += $poids * $carat;
-        $pureteTotale       += $purete;
-
-        $details[] = [
-            'id_fondation' => $fondation->id,
-            'reference'    => $fondation->initFondation?->reference ?? null,
-            'poids_fondu'  => round($poids, 2),
-            'carrat_fondu' => round($carat, 2),
-            'purete'       => round($purete, 2),
-            // 💰 Le montant_barre sera ajouté après avoir déterminé le prix unitaire
-            'montant_barre' => 0,
-        ];
-    }
-
-    // === Étape 2 : Calculs globaux ===
-    $carratMoyen = $poidsTotal > 0 ? $sommeCaratPonderee / $poidsTotal : 0;
-    $carratMoyen = round($carratMoyen, 2);
-    $pureteTotale = round($pureteTotale, 3);
-
-    // === Étape 3 : Application des formules selon le type de client ===
-    if ($typeClient === 'local') {
-        $prixUnitaire = ($bourse / 34) - $discompte;
-        $totalFacture = ($prixUnitaire / 22) * $pureteTotale * $carratMoyen;
-    } else {
-        $prixUnitaire = ($bourse / 31.10347) - (32 * $discompte);
-        $totalFacture = $prixUnitaire * $pureteTotale;
-    }
-
-    // === Étape 4 : Ajout du montant_barre pour chaque fondation ===
-    foreach ($details as &$detail) {
-        $detail['montant_barre'] = round($detail['purete'] * $prixUnitaire, 2);
-    }
-    unset($detail); // bonne pratique
-
-    // === Étape 5 : Arrondis et préparation du retour ===
-    $prixUnitaireTronque = $prixUnitaire ? $this->truncate($prixUnitaire, 2) : null;
-    $totalFactureTronque = round($totalFacture, 2);
-
-    return [
-        'id_fixing'     => $fixing->id,
-        'type_client'   => $typeClient,
-        'prix_unitaire' => $prixUnitaireTronque,
-        'poids_total'   => round($poidsTotal, 2),
-        'carrat_moyen'  => $carratMoyen,
-        'purete_totale' => $pureteTotale,
-        'fondations'    => $details,
-        'total_facture' => $totalFactureTronque,
-    ];
-}
-
 
 /**
  * 🔹 Tronque une valeur sans arrondir (utile pour les montants financiers).
