@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Modules\Settings\Resources;
 
 use App\Traits\Helper;
@@ -12,33 +13,32 @@ class LivraisonNonFixeeResource extends JsonResource
     public function toArray(Request $request): array
     {
         return [
-            'id'         => $this->id,
-            'reference'  => $this->reference ?? '',
+            'id'        => $this->id,
+            'reference' => $this->reference ?? '',
 
-            // 🔹 Liste des fondations non fixées
-            'barres'     => $this->fondations
+            // 🔹 Liste des fondations non encore fixées
+            'barres' => $this->fondations
                 ->whereNull('id_fixing')
                 ->map(function ($fondation) {
+                    $poidsFondu = (float) ($fondation->poids_fondu ?? 0);
+                    $carratFondu = (float) ($fondation->carrat_fondu ?? 0);
+
                     return [
                         'id'                  => $fondation->id,
                         'reference_livraison' => $this->reference ?? '',
-                        'poids_fondu'         => (float) $fondation->poids_fondu,
-                        'carrat_fondu'        => (float) $fondation->carrat_fondu,
+                        'poids_fondu'         => $poidsFondu,
+                        'carrat_fondu'        => $carratFondu,
 
-                        // ✅ Calcul de la pureté locale avec ton helper
+                        // ✅ Pureté locale arrondie à 2 décimales
                         'purete_locale'       => $this->arroundir(
                             2,
-                            $this->pureter(
-                                (float) $fondation->poids_fondu,
-                                (float) $fondation->carrat_fondu
-                            )
+                            $this->pureter($poidsFondu, $carratFondu)
                         ),
-
                     ];
                 })
                 ->values(),
 
-            'created_at' => $this->created_at?->format('Y-m-d H:i:s'),
+            'created_at' => optional($this->created_at)->format('Y-m-d H:i:s'),
         ];
     }
 }
