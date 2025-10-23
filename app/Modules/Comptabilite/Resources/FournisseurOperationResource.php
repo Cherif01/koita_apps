@@ -3,19 +3,29 @@
 namespace App\Modules\Comptabilite\Resources;
 
 use App\Modules\Administration\Resources\FournisseurResource;
+use App\Traits\Helper;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 class FournisseurOperationResource extends JsonResource
 {
+    use Helper;
+
     public function toArray(Request $request)
     {
         return [
-            'id'                => $this->id,
+            'id' => $this->id,
 
-            'fournisseur'       => new FournisseurResource($this->whenLoaded('fournisseur')),
+            'fournisseur' => [
+                'id' => $this->fournisseur->id,
+                'name' => $this->fournisseur->name,
+                'adresse' => $this->fournisseur->adresse ?? null,
+                'telephone' => $this->fournisseur->telephone,
+                'solde' => $this->soldeGlobalFournisseur($this->fournisseur->id),
+                'image' => is_null($this->fournisseur->image) ? asset('/images/male.jpg') : asset('/storage/images/fournisseurs/'.$this->fournisseur->image)
+            ],
 
-            'type_operation'    => [
+            'type_operation' => [
                 'id' => $this->typeOperation->id,
                 'libelle' => $this->typeOperation->libelle,
                 'nature' => $this->typeOperation->nature,
@@ -28,9 +38,11 @@ class FournisseurOperationResource extends JsonResource
                 'taux_change' => $this->devise->taux_change ?? null,
             ],
 
-            'taux_jour'         => $this->taux,
-            'montant'           => $this->montant,
-            'commentaire'       => $this->commentaire ?? null,
+            'date_operation' => $this->date_operation ?? null,
+            'reference' => $this->reference ?? null,
+            'taux_jour' => $this->taux,
+            'montant' => $this->montant,
+            'commentaire' => $this->commentaire ?? null,
 
             'createdBy' => $this->createdBy ? [
                 'id' => $this->createdBy->id ?? null,
@@ -50,8 +62,8 @@ class FournisseurOperationResource extends JsonResource
                 'role' => $this->updatedBy->role,
             ] : null,
 
-            'created_at'        => $this->created_at?->format('Y-m-d H:i:s'),
-            'updated_at'        => $this->updated_at?->format('Y-m-d H:i:s'),
+            'created_at' => $this->created_at?->format('Y-m-d H:i:s'),
+            'updated_at' => $this->updated_at?->format('Y-m-d H:i:s'),
         ];
     }
 }

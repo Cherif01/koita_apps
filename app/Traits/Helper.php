@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Traits;
 
 use App\Modules\Administration\Models\Fournisseur;
@@ -7,6 +8,7 @@ use App\Modules\Fixing\Models\Fixing;
 use App\Modules\Fixing\Models\FixingBarre;
 use App\Modules\Fondation\Models\Fondation;
 use App\Modules\Purchase\Models\Barre;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -33,7 +35,7 @@ trait Helper
     {
         $fixing_barres = FixingBarre::where('fixing_id', $fixing_id)->get();
 
-        if (! $fixing_barres) {
+        if (!$fixing_barres) {
             return 0;
         }
 
@@ -63,7 +65,7 @@ trait Helper
         $multplication = $this->poidsTimeCarrat($fixing_id);
         $poids_total   = $this->poidsFixing($fixing_id);
 
-        $result = ($poids_total) > 0 ? ($multplication / $poids_total) : 0;
+        $result = $poids_total > 0 ? ($multplication / $poids_total) : 0;
 
         return number_format($result, 2) ?? 0;
     }
@@ -72,7 +74,7 @@ trait Helper
     {
         $fixing_barres = FixingBarre::where('fixing_id', $fixing_id)->get();
 
-        if (! $fixing_barres) {
+        if (!$fixing_barres) {
             return 0;
         }
 
@@ -101,7 +103,7 @@ trait Helper
     {
         $barre_fondue = Fondation::where('ids_barres', $id)->first();
 
-        if (! $barre_fondue) {
+        if (!$barre_fondue) {
             return null;
         }
 
@@ -117,7 +119,7 @@ trait Helper
     }
 
     /**
-     * Cette methode retourne le montant correspondant a chaque barre
+     * Cette methode retourne le montant correspondant a chaque barre.
      */
     public function montantBarre($id, $unit_price)
     {
@@ -128,18 +130,18 @@ trait Helper
         }
 
         // Normalize all numeric inputs
-        $unit_price  = ($unit_price ?? 0);
-        $densite     = ($barre->densite ?? 0);
-        $poid_pure   = ($barre->poid_pure ?? 0);
+        $unit_price = ($unit_price ?? 0);
+        $densite = ($barre->densite ?? 0);
+        $poid_pure = ($barre->poid_pure ?? 0);
         $carrat_pure = ($barre->carrat_pure ?? 0);
 
         $montant = 0;
 
-        if ($barre->status === "fondue") {
+        if ($barre->status === 'fondue') {
             $barre_fondue = Fondation::where('ids_barres', $barre->id)->first();
 
             if ($barre_fondue) {
-                $poids_dubai  = ($barre_fondue->poids_dubai ?? 0);
+                $poids_dubai = ($barre_fondue->poids_dubai ?? 0);
                 $carrat_dubai = ($barre_fondue->carrat_dubai ?? 0);
 
                 if ($barre_fondue->statut === 'corriger') {
@@ -156,7 +158,7 @@ trait Helper
     }
 
     /**
-     * Cette methode retourne le montant total de chaque fixing
+     * Cette methode retourne le montant total de chaque fixing.
      */
     public function montantFixing($fixing_id)
     {
@@ -167,7 +169,7 @@ trait Helper
 
         // $fixing_barres = FixingBarre::where('fixing_id', $fixing->id)->get();
         $montant_total = 0;
-        $unit_price    = ($fixing->unit_price ?? 0);
+        $unit_price = ($fixing->unit_price ?? 0);
 
         // foreach ($fixing_barres as $barre) {
         //     $montant_total +=  $this->montantBarre($barre->barre_id, $unit_price);
@@ -179,7 +181,7 @@ trait Helper
     }
 
     /**
-     * Cette methode retourne un tableau de grand total montant d'un fournisseur pour chaque devise
+     * Cette methode retourne un tableau de grand total montant d'un fournisseur pour chaque devise.
      */
     public function montantTotalFixing($fournisseurId)
     {
@@ -217,7 +219,7 @@ trait Helper
     }
 
     /**
-     * Cette methode retourne la pureter de l'or
+     * Cette methode retourne la pureter de l'or.
      */
     public function pureter($poid, $carrat)
     {
@@ -227,7 +229,7 @@ trait Helper
     }
 
     /**
-     * Cette method est pour retourner le solde d'un fournisseur donner par rapport a ces opérations
+     * Cette method est pour retourner le solde d'un fournisseur donner par rapport a ces opérations.
      */
     public function soldeFournisseurOperations($fournisseurId)
     {
@@ -244,7 +246,7 @@ trait Helper
     }
 
     /**
-     * Cette method retourne le solde global du fournisseur par devise
+     * Cette method retourne le solde global du fournisseur par devise.
      */
     public function soldeGlobalFournisseur($fournisseurId)
     {
@@ -257,15 +259,15 @@ trait Helper
 
         // Add operations balances
         foreach ($operations as $op) {
-            $symbole          = $op['symbole'];
-            $montant          = $op['montant'];
+            $symbole = $op['symbole'];
+            $montant = $op['montant'];
             $totals[$symbole] = ($totals[$symbole] ?? 0) + $montant;
         }
 
         // Add fixing balances
         foreach ($fixings as $fix) {
-            $symbole          = $fix['symbole'];
-            $montant          = $fix['montant'];
+            $symbole = $fix['symbole'];
+            $montant = $fix['montant'];
             $totals[$symbole] = ($totals[$symbole] ?? 0) + $montant;
         }
 
@@ -282,7 +284,7 @@ trait Helper
     }
 
     /**
-     * Cette method retourne toute l'historique des transaction d'un fournisseur
+     * Cette method retourne toute l'historique des transaction d'un fournisseur.
      */
     public function historiqueFournisseurComplet($fournisseurId)
     {
@@ -299,24 +301,26 @@ trait Helper
             return collect([]);
         }
 
-        // ✅ 1. Transform operations (if any)
-        $operations = $fournisseur->fournisseurOperations?->map(function ($op) {
-            $nature  = $op->typeOperation?->nature ?? 0;
+        // ✅ 1. Transform operations (if any) - convert to base collection
+        $operations = collect($fournisseur->operations?->map(function ($op) {
+            $nature = $op->typeOperation?->nature ?? 0;
             $montant = (float) ($op->montant ?? 0);
+            $dateOperation = $op->date_operation ? Carbon::parse($op->date_operation)->format('d-m-Y') : '';
+            $mouvement = ($op->reference ?? '') . ': ' . ($op->commentaire ?? '') . ' le ' . $dateOperation;
 
             return [
-                'date'      => $op->created_at,
-                'mouvement' => $op->commentaire ?? '',
-                'credit'    => $nature == 1 ? $montant : 0,
-                'debit'     => $nature == 0 ? $montant : 0,
-                'symbole'   => $op->devise?->symbole ?? 'N/A',
+                'date' => $op->created_at,
+                'mouvement' => $mouvement,
+                'credit' => $nature == 1 ? $montant : 0,
+                'debit' => $nature == 0 ? $montant : 0,
+                'symbole' => $op->devise?->symbole ?? 'N/A',
             ];
-        }) ?? collect([]);
+        }) ?? []);
 
-        // ✅ 2. Transform fixings (if any)
-        $fixings = $fournisseur->fixings?->map(function ($fixing) use ($fournisseur) {
-            $devise    = $fixing->devise;
-            $symbole   = $devise?->symbole ?? 'N/A';
+        // ✅ 2. Transform fixings (if any) - convert to base collection
+        $fixings = collect($fournisseur->fixings?->map(function ($fixing) use ($fournisseur) {
+            $devise = $fixing->devise;
+            $symbole = $devise?->symbole ?? 'N/A';
             $hasBarres = $fixing->fixingBarres?->count() > 0;
 
             // Compute unit_price if USD
@@ -341,9 +345,9 @@ trait Helper
                 'debit'     => 0,
                 'symbole'   => $symbole,
             ];
-        }) ?? collect([]);
+        }) ?? []);
 
-        // ✅ 3. Merge both collections (even if one is empty)
+        // ✅ 3. Merge both collections (now both are base collections)
         $allTransactions = $operations->merge($fixings);
 
         // ✅ If no transactions at all → return empty

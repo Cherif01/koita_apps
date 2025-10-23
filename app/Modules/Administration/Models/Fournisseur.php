@@ -23,17 +23,17 @@ class Fournisseur extends Model
         'updated_by',
     ];
 
-    public function achats() : HasMany
+    public function achats(): HasMany
     {
         return $this->hasMany(Achat::class)->whereNull('achats.deleted_at');
     }
 
-    public function operations() : HasMany
+    public function operations(): HasMany
     {
         return $this->hasMany(FournisseurOperation::class)->whereNull('fournisseur_operations.deleted_at');
     }
 
-    public function fixings() : HasMany
+    public function fixings(): HasMany
     {
         return $this->hasMany(Fixing::class)->whereNull('fixings.deleted_at');
     }
