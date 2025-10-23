@@ -64,7 +64,7 @@ trait Helper
     public function carratFixing($fixing_id)
     {
         $multplication = $this->poidsTimeCarrat($fixing_id);
-        $poids_total = $this->poidsFixing($fixing_id);
+        $poids_total   = $this->poidsFixing($fixing_id);
 
         $result = $poids_total > 0 ? ($multplication / $poids_total) : 0;
 
@@ -109,10 +109,10 @@ trait Helper
         }
 
         $barre = [
-            'id' => $barre_fondue->id,
-            'poid_fondu' => $barre_fondue->poids_fondu,
+            'id'           => $barre_fondue->id,
+            'poid_fondu'   => $barre_fondue->poids_fondu,
             'carrat_fondu' => $barre_fondue->carrat_fondu,
-            'poids_dubai' => $barre_fondue->poids_dubai,
+            'poids_dubai'  => $barre_fondue->poids_dubai,
             'carrat_dubai' => $barre_fondue->carrat_dubai,
         ];
 
@@ -126,7 +126,7 @@ trait Helper
     {
         // Retrieve barre safely
         $barre = Barre::find($id);
-        if (!$barre) {
+        if (! $barre) {
             return 0; // or throw exception if needed
         }
 
@@ -164,7 +164,7 @@ trait Helper
     public function montantFixing($fixing_id)
     {
         $fixing = Fixing::find($fixing_id);
-        if (!$fixing) {
+        if (! $fixing) {
             return 0;
         }
 
@@ -201,7 +201,7 @@ trait Helper
 
             $symbole = $fixing->devise->symbole ?? 'N/A';
 
-            if (!isset($totals[$symbole])) {
+            if (! isset($totals[$symbole])) {
                 $totals[$symbole] = 0;
             }
 
@@ -253,7 +253,7 @@ trait Helper
     {
         // Get both datasets
         $operations = $this->soldeFournisseurOperations($fournisseurId);
-        $fixings = $this->montantTotalFixing($fournisseurId);
+        $fixings    = $this->montantTotalFixing($fournisseurId);
 
         // Get all available currencies from the database
         $allCurrencies = Devise::pluck('symbole')->toArray();
@@ -306,7 +306,7 @@ trait Helper
         ])->find($fournisseurId);
 
         // ✅ If supplier not found → return empty
-        if (!$fournisseur) {
+        if (! $fournisseur) {
             return collect([]);
         }
 
@@ -340,19 +340,19 @@ trait Helper
 
             // Compute montant
             if ($hasBarres) {
-                $montant = (float) $this->montantFixing($fixing->id);
+                $montant     = (float) $this->montantFixing($fixing->id);
                 $commentaire = "Fixing de {$fournisseur->name}";
             } else {
-                $montant = ($unit_price / 22) * (float) ($fixing->poids_pro ?? 0) * (float) ($fixing->carrat_moyenne ?? 0);
+                $montant     = ($unit_price / 22) * (float) ($fixing->poids_pro ?? 0) * (float) ($fixing->carrat_moyenne ?? 0);
                 $commentaire = "Fixing provisoire par {$fournisseur->name}";
             }
 
             return [
-                'date' => $fixing->created_at,
+                'date'      => $fixing->created_at,
                 'mouvement' => $commentaire,
-                'credit' => round($montant, 2),
-                'debit' => 0,
-                'symbole' => $symbole,
+                'credit'    => round($montant, 2),
+                'debit'     => 0,
+                'symbole'   => $symbole,
             ];
         }) ?? []);
 
@@ -376,15 +376,21 @@ trait Helper
                     $solde -= $t['debit'];
 
                     return [
-                        'date' => optional($t['date'])->format('d-m-Y H:i:s') ?? '',
+                        'date'      => optional($t['date'])->format('d-m-Y H:i:s') ?? '',
                         'mouvement' => $t['mouvement'],
-                        'credit' => $t['credit'],
-                        'debit' => $t['debit'],
-                        'solde' => round($solde, 2),
+                        'credit'    => $t['credit'],
+                        'debit'     => $t['debit'],
+                        'solde'     => round($solde, 2),
                     ];
                 });
             });
 
         return $historiques;
     }
+
+    public function arroundir(int $precision, float $valeur): float
+    {
+        return round($valeur, $precision);
+    }
+
 }
