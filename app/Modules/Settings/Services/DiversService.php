@@ -130,32 +130,74 @@ class DiversService
         }
     }
 
+    // public function calculerSoldeDivers(int $id_divers, int $cacheMinutes = 5): array
+    // {
+    //     return Cache::remember("solde_divers_{$id_divers}", now()->addMinutes($cacheMinutes), function () use ($id_divers) {
+    //         $operations = OperationDivers::with(['typeOperation', 'devise'])
+    //             ->where('id_divers', $id_divers)
+    //             ->get();
+
+    //         $soldes = [];
+
+    //         foreach ($operations as $op) {
+    //             $devise  = strtoupper($op->devise?->symbole ?? 'GNF');
+    //             $nature  = $op->typeOperation?->nature ?? 1;
+    //             $montant = (float) $op->montant;
+
+    //             if (! isset($soldes[$devise])) {
+    //                 $soldes[$devise] = 0;
+    //             }
+
+    //             $soldes[$devise] += $nature == 1 ? $montant : -$montant;
+    //         }
+
+    //         return collect($soldes)
+    //             ->mapWithKeys(fn($s, $d) => [strtolower($d) => round($s, 2)])
+    //             ->toArray();
+    //     });
+    // }
+
     public function calculerSoldeDivers(int $id_divers, int $cacheMinutes = 5): array
-    {
-        return Cache::remember("solde_divers_{$id_divers}", now()->addMinutes($cacheMinutes), function () use ($id_divers) {
-            $operations = OperationDivers::with(['typeOperation', 'devise'])
-                ->where('id_divers', $id_divers)
-                ->get();
+{
+    return Cache::remember("solde_divers_{$id_divers}", now()->addMinutes($cacheMinutes), function () use ($id_divers) {
 
-            $soldes = [];
+        $operations = OperationDivers::with(['typeOperation', 'devise'])
+            ->where('id_divers', $id_divers)
+            ->get();
 
-            foreach ($operations as $op) {
-                $devise  = strtoupper($op->devise?->symbole ?? 'GNF');
-                $nature  = $op->typeOperation?->nature ?? 1;
-                $montant = (float) $op->montant;
+        $soldes = [];
 
-                if (! isset($soldes[$devise])) {
-                    $soldes[$devise] = 0;
-                }
+        foreach ($operations as $op) {
+            $devise  = strtoupper($op->devise?->symbole ?? 'GNF');
+            $nature  = $op->typeOperation?->nature ?? 1;
+            $montant = (float) $op->montant;
+            $taux    = (float) ($op->taux_jour ?? 1);
 
-                $soldes[$devise] += $nature == 1 ? $montant : -$montant;
+            // ✅ Si devise est GNF → pas de conversion, on ajoute normalement
+            if ($devise === 'GNF') {
+                $soldes['gnf'] = ($soldes['gnf'] ?? 0)
+                    + ($nature == 1 ? $montant : -$montant);
+                continue;
             }
 
-            return collect($soldes)
-                ->mapWithKeys(fn($s, $d) => [strtolower($d) => round($s, 2)])
-                ->toArray();
-        });
-    }
+            // ✅ Si taux_jour ≠ 1 → conversion en GNF uniquement ✅
+            if ($taux != 1) {
+                $montantConverti = $montant * $taux;
+                $soldes['gnf'] = ($soldes['gnf'] ?? 0)
+                    + ($nature == 1 ? $montantConverti : -$montantConverti);
+            } else {
+                // ✅ Sinon, solde dans la devise d'origine (USD ou autre)
+                $soldes[strtolower($devise)] = ($soldes[strtolower($devise)] ?? 0)
+                    + ($nature == 1 ? $montant : -$montant);
+            }
+        }
+
+        return collect($soldes)
+            ->map(fn($s) => round($s, 2))
+            ->toArray();
+    });
+}
+
 
    public function getReleveDivers(int $id_divers): array
 {
