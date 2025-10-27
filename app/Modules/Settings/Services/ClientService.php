@@ -206,76 +206,142 @@ class ClientService
     /**
      * 🔹 Relevé complet (Fixings + Opérations)
      */
+    // public function getReleveClient(int $id_client): array
+    // {
+    //     // ✅ Récupération des opérations client
+    //     $operations = OperationClient::with(['typeOperation', 'devise'])
+    //         ->where('id_client', $id_client)
+    //         ->get()
+    //         ->map(function ($op) {
+    //             $nature = $op->typeOperation?->nature; // 1 = entrée, 0 = sortie
+
+    //             return collect([
+    //                 'date'           => $op->created_at?->format('Y-m-d H:i:s'),
+    //                 'date_operation' => $op->date_operation,
+    //                 'reference'      => $op->reference,
+    //                 'type'           => 'operation_client',
+    //                 'libelle'        => $op->typeOperation?->libelle ?? 'Opération client',
+    //                 'devise'         => $op->devise?->symbole ?? '',
+    //                 'debit'          => $nature == 0 ? (float) $op->montant : 0, // sortie
+    //                 'credit'         => $nature == 1 ? (float) $op->montant : 0, // entrée
+    //             ]);
+    //         });
+
+    //     // ✅ Récupération des fixings (sorties)
+    //     $fixings = FixingClient::with(['devise'])
+    //         ->where('id_client', $id_client)
+    //         ->get()
+    //         ->map(function ($fix) {
+    //             $calcul = app(FixingClientService::class)->calculerFacture($fix->id);
+
+    //             $poidsTotal   = $calcul['purete_totale'] ?? 0;
+    //             $montantTotal = $calcul['total_facture'] ?? 0;
+
+    //             return collect([
+    //                 'date'           => $fix->created_at?->format('Y-m-d H:i:s'),
+    //                 'date_operation' => null,
+    //                 'reference'      => $fix->reference ?? null,
+    //                 'type'           => 'fixing',
+    //                 'libelle'        => "Facturation du {$poidsTotal} g",
+    //                 'devise' => $fix->devise?->symbole ?? '',
+    //                 'debit'  => (float) $montantTotal,
+    //                 'credit' => 0,
+    //             ]);
+    //         });
+
+    //     // ✅ Fusion complète et triée
+    //     $operationsComplet = $operations
+    //         ->concat($fixings)
+    //         ->sortBy('date')
+    //         ->values();
+
+    //     // ✅ Calcul des soldes progressifs
+    //     $soldeUSD = 0;
+    //     $soldeGNF = 0;
+
+    //     $operationsComplet = $operationsComplet->map(function ($op) use (&$soldeUSD, &$soldeGNF) {
+    //         $devise = $op['devise'] ?? '';
+
+    //         if ($devise === 'USD') {
+    //             $soldeUSD += $op['credit'] - $op['debit'];
+    //             $op['solde_apres'] = round($soldeUSD, 2);
+    //         } elseif ($devise === 'GNF') {
+    //             $soldeGNF += $op['credit'] - $op['debit'];
+    //             $op['solde_apres'] = round($soldeGNF, 2);
+    //         } else {
+    //             $op['solde_apres'] = null;
+    //         }
+
+    //         return $op;
+    //     });
+
+    //     return $operationsComplet->toArray();
+    // }
     public function getReleveClient(int $id_client): array
     {
-        // ✅ Récupération des opérations client
-        $operations = OperationClient::with(['typeOperation', 'devise'])
+        $operationsClient = OperationClient::with(['typeOperation', 'devise'])
             ->where('id_client', $id_client)
             ->get()
             ->map(function ($op) {
                 $nature = $op->typeOperation?->nature; // 1 = entrée, 0 = sortie
 
-                return collect([
+                return [
                     'date'           => $op->created_at?->format('Y-m-d H:i:s'),
                     'date_operation' => $op->date_operation,
                     'reference'      => $op->reference,
                     'type'           => 'operation_client',
                     'libelle'        => $op->typeOperation?->libelle ?? 'Opération client',
                     'devise'         => $op->devise?->symbole ?? '',
-                    'debit'          => $nature == 0 ? (float) $op->montant : 0, // sortie
-                    'credit'         => $nature == 1 ? (float) $op->montant : 0, // entrée
-                ]);
+                    'debit'          => $nature == 0 ? (float) $op->montant : 0,
+                    'credit'         => $nature == 1 ? (float) $op->montant : 0,
+                ];
             });
 
-        // ✅ Récupération des fixings (sorties)
         $fixings = FixingClient::with(['devise'])
             ->where('id_client', $id_client)
             ->get()
             ->map(function ($fix) {
                 $calcul = app(FixingClientService::class)->calculerFacture($fix->id);
 
-                $poidsTotal   = $calcul['purete_totale'] ?? 0;
-                $montantTotal = $calcul['total_facture'] ?? 0;
-
-                return collect([
+                return [
                     'date'           => $fix->created_at?->format('Y-m-d H:i:s'),
                     'date_operation' => null,
                     'reference'      => $fix->reference ?? null,
                     'type'           => 'fixing',
-                    'libelle'        => "Facturation du {$poidsTotal} g",
+                    'libelle'        => "Facturation du {$calcul['purete_totale']} g",
                     'devise' => $fix->devise?->symbole ?? '',
-                    'debit'  => (float) $montantTotal,
+                    'debit'  => (float) ($calcul['total_facture'] ?? 0),
                     'credit' => 0,
-                ]);
+                ];
             });
 
-        // ✅ Fusion complète et triée
-        $operationsComplet = $operations
+        $data = $operationsClient
             ->concat($fixings)
-            ->sortBy('date')
+            ->sortByDesc('date')
             ->values();
 
-        // ✅ Calcul des soldes progressifs
         $soldeUSD = 0;
         $soldeGNF = 0;
 
-        $operationsComplet = $operationsComplet->map(function ($op) use (&$soldeUSD, &$soldeGNF) {
-            $devise = $op['devise'] ?? '';
+        $usdList = [];
+        $gnfList = [];
 
-            if ($devise === 'USD') {
-                $soldeUSD += $op['credit'] - $op['debit'];
-                $op['solde_apres'] = round($soldeUSD, 2);
-            } elseif ($devise === 'GNF') {
-                $soldeGNF += $op['credit'] - $op['debit'];
-                $op['solde_apres'] = round($soldeGNF, 2);
-            } else {
-                $op['solde_apres'] = null;
+        foreach ($data as &$ligne) {
+            if ($ligne['devise'] === 'USD') {
+                $soldeUSD += $ligne['credit'] - $ligne['debit'];
+                $ligne['solde_apres'] = round($soldeUSD, 2);
+                $usdList[]            = $ligne;
+            } elseif ($ligne['devise'] === 'GNF') {
+                $soldeGNF += $ligne['credit'] - $ligne['debit'];
+                $ligne['solde_apres'] = round($soldeGNF, 2);
+                $gnfList[]            = $ligne;
             }
+        }
 
-            return $op;
-        });
-
-        return $operationsComplet->toArray();
+        return [
+            'usd' => $usdList,
+            'gnf' => $gnfList,
+        ];
     }
 
     public function calculerStockClient(int $id_client): array
@@ -351,8 +417,5 @@ class ClientService
             'message' => 'Base de données vidée avec succès (sauf tables exclues).',
         ]);
     }
-
-   
-
 
 }
