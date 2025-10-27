@@ -31,7 +31,7 @@ class CaisseResource extends JsonResource
             // 🔹 Relations principales
             'type_operation'   => new TypeOperationResource($this->whenLoaded('typeOperation')),
             'devise'           => new DeviseResource($this->whenLoaded('devise')),
-            'soldeGlobal'=> $soldeGlobal,
+            //'soldeGlobal'=> $soldeGlobal,
             // 🔹 Audit
             'created_by'       => $this->createur?->name,
             'updated_by'       => $this->modificateur?->name,

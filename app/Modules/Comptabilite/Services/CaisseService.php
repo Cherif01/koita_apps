@@ -94,7 +94,11 @@ class CaisseService
             return response()->json([
                 'status'  => 200,
                 'message' => 'Liste des opérations de caisse récupérée avec succès.',
-                'data'    => CaisseResource::collection($caisses),
+                'data'    => [
+                    
+                  'operations' => CaisseResource::collection($caisses),
+                   'soldeGlobal'=>$this->calculerSoldeGlobal()
+                ]
             ]);
         } catch (Exception $e) {
             return response()->json([
