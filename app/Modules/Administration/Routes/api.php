@@ -10,6 +10,7 @@ Route::prefix('v1/auth')->group(function () {
     Route::post('/login', [UserAuthController::class, 'login']);
 });
 
+
 Route::middleware('auth:sanctum')->prefix('v1/auth')->group(function () {
     Route::post('/logout', [UserAuthController::class, 'logout']);
     Route::get('/users/auth', [UserController::class, 'authUser']);
@@ -17,6 +18,7 @@ Route::middleware('auth:sanctum')->prefix('v1/auth')->group(function () {
     Route::put('/users/password', [UserController::class, 'updatePassword']);
     Route::apiResource('/users', UserController::class)->except(['store']);
 });
+
 
 Route::middleware('auth:sanctum')->prefix('v1/admins')->group(function(){
     Route::get('fournisseurs/restore/{id}', [FournisseurController::class, 'restore']);

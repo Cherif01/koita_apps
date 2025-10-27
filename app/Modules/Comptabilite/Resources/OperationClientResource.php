@@ -23,6 +23,7 @@ class OperationClientResource extends JsonResource
             'date_operation'   => $dateOperation,
             'montant'          => (float) $this->montant,
             'commentaire'      => $this->commentaire,
+             'taux_jour'      => $this->taux_jour,
 
             // 🔹 Relations principales
             'type_operation'   => new TypeOperationResource($this->whenLoaded('typeOperation')),

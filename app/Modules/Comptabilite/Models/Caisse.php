@@ -19,6 +19,7 @@ class Caisse extends Model
         'id_devise',
         'montant',
         'commentaire',
+        'taux_jour',
         'reference',
         'date_operation',
         'created_by',

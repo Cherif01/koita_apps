@@ -26,7 +26,7 @@ class StoreOperationClientRequest extends FormRequest
             'id_type_operation' => 'required|integer|exists:type_operations,id',
             'id_devise'         => 'required|integer|exists:devises,id',
             'montant'           => 'required|numeric|min:0',
-
+            'taux_jour'         => 'nullable|numeric|min:0',
             'reference'         => 'nullable|string|max:100',
             'date_operation'    => 'nullable|date',
             'commentaire'       => 'nullable|string|max:255',

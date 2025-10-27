@@ -27,6 +27,7 @@ class StoreOperationDiversRequest extends FormRequest
             'id_devise'         => 'required|integer|exists:devises,id',
             'montant'           => 'required|numeric|min:0',
             'commentaire'       => 'nullable|string|max:255',
+            'taux_jour'         => 'nullable|numeric|min:0',
 
             // 🆕 Champs ajoutés
             'reference'         => 'nullable|string|max:100',
