@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 use App\Modules\Settings\Resources\DeviseResource;
 use App\Modules\Comptabilite\Resources\TypeOperationResource;
+use App\Modules\Comptabilite\Services\CaisseService;
 use Carbon\Carbon;
 
 class CaisseResource extends JsonResource
@@ -17,6 +18,8 @@ class CaisseResource extends JsonResource
             ? Carbon::parse($this->date_operation)->format('Y-m-d')
             : $this->created_at?->format('Y-m-d');
 
+            $soldeGlobal = app(CaisseService::class)->calculerSoldeGlobal();
+
         return array_filter([
             'id'               => $this->id,
             'reference'        => $this->reference,
@@ -27,7 +30,7 @@ class CaisseResource extends JsonResource
             // 🔹 Relations principales
             'type_operation'   => new TypeOperationResource($this->whenLoaded('typeOperation')),
             'devise'           => new DeviseResource($this->whenLoaded('devise')),
-
+            'soldeGlobal'=> $soldeGlobal,
             // 🔹 Audit
             'created_by'       => $this->createur?->name,
             'updated_by'       => $this->modificateur?->name,

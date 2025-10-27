@@ -1,44 +1,48 @@
 <?php
-
 namespace App\Modules\Comptabilite\Services;
 
+use App\Modules\Administration\Models\Fournisseur;
 use App\Modules\Comptabilite\Models\Caisse;
 use App\Modules\Comptabilite\Models\TypeOperation;
 use App\Modules\Comptabilite\Resources\CaisseResource;
+use App\Modules\Settings\Models\Client;
 use App\Modules\Settings\Models\Devise;
-use Illuminate\Support\Facades\Auth;
+use App\Modules\Settings\Models\Divers;
+use App\Modules\Settings\Services\ClientService;
+use App\Modules\Settings\Services\DiversService;
+use App\Traits\Helper;
 use Exception;
+use Illuminate\Support\Facades\Auth;
 
 class CaisseService
 {
     /**
      * 🔹 Enregistrer une nouvelle opération de caisse
      */
+
+    use Helper;
     public function store(array $data)
     {
         try {
             // Charger l'opération et sa nature (entrée ou sortie)
             $typeOperation = TypeOperation::find($data['id_type_operation']);
 
-            
             // 🔸 Si c’est une sortie (décaissement), vérifier le solde disponible
             if ($typeOperation->nature === 0) {
                 $devise = Devise::find($data['id_devise']);
-
-               
 
                 // Calcul du solde actuel (entrées - sorties) pour cette devise
                 $entrees = Caisse::whereHas('typeOperation', function ($q) {
                     $q->where('nature', 'entree');
                 })
-                ->where('id_devise', $data['id_devise'])
-                ->sum('montant');
+                    ->where('id_devise', $data['id_devise'])
+                    ->sum('montant');
 
                 $sorties = Caisse::whereHas('typeOperation', function ($q) {
                     $q->where('nature', 'sortie');
                 })
-                ->where('id_devise', $data['id_devise'])
-                ->sum('montant');
+                    ->where('id_devise', $data['id_devise'])
+                    ->sum('montant');
 
                 $soldeDisponible = $entrees - $sorties;
 
@@ -58,7 +62,7 @@ class CaisseService
 
             // ✅ Si tout est bon, on enregistre l’opération
             $data['created_by'] = Auth::id();
-            $caisse = Caisse::create($data);
+            $caisse             = Caisse::create($data);
 
             return response()->json([
                 'status'  => 200,
@@ -122,4 +126,83 @@ class CaisseService
             ]);
         }
     }
+
+    public function calculerSoldeCaisse(): array
+    {
+        // ✅ Solde Caisse USD
+        $soldeUSD =
+        Caisse::whereHas('devise', fn($q) => $q->where('symbole', 'USD'))
+            ->whereHas('typeOperation', fn($q) => $q->where('nature', 1))
+            ->sum('montant')
+         -
+        Caisse::whereHas('devise', fn($q) => $q->where('symbole', 'USD'))
+            ->whereHas('typeOperation', fn($q) => $q->where('nature', 0))
+            ->sum('montant');
+
+        // ✅ Solde Caisse GNF
+        $soldeGNF =
+        Caisse::whereHas('devise', fn($q) => $q->where('symbole', 'GNF'))
+            ->whereHas('typeOperation', fn($q) => $q->where('nature', 1))
+            ->sum('montant')
+         -
+        Caisse::whereHas('devise', fn($q) => $q->where('symbole', 'GNF'))
+            ->whereHas('typeOperation', fn($q) => $q->where('nature', 0))
+            ->sum('montant');
+
+        return [
+            'solde_usd' => round($soldeUSD, 2),
+            'solde_gnf' => round($soldeGNF, 2),
+        ];
+    }
+
+    public function calculerSoldeGlobal(): array
+    {
+        // ✅ Appel direct au solde de la caisse
+        $soldeCaisse    = $this->calculerSoldeCaisse();
+        $soldeCaisseUSD = $soldeCaisse['solde_usd'] ?? 0;
+        $soldeCaisseGNF = $soldeCaisse['solde_gnf'] ?? 0;
+
+        // ✅ Solde Clients
+        $soldeClientUSD = 0;
+        $soldeClientGNF = 0;
+
+        foreach (Client::all() as $client) {
+            $s = app(ClientService::class)->calculerSoldeClient($client->id);
+            $soldeClientUSD += $s['solde_usd'];
+            $soldeClientGNF += $s['solde_gnf'];
+        }
+
+        // ✅ Solde Divers
+        $soldeDiversUSD = 0;
+        $soldeDiversGNF = 0;
+
+        foreach (Divers::all() as $divers) {
+            $s = app(DiversService::class)->calculerSoldeDivers($divers->id);
+            $soldeDiversUSD += $s['usd'] ?? 0;
+            $soldeDiversGNF += $s['gnf'] ?? 0;
+        }
+
+        // ✅ Solde Fournisseurs
+        $soldeFournisseurUSD = 0;
+        $soldeFournisseurGNF = 0;
+
+        foreach (Fournisseur::all() as $f) {
+            $s = $this->soldeGlobalFournisseur($f->id);
+
+            foreach ($s as $item) {
+                if ($item['symbole'] === 'USD') {
+                    $soldeFournisseurUSD += $item['montant'];
+                } elseif ($item['symbole'] === 'GNF') {
+                    $soldeFournisseurGNF += $item['montant'];
+                }
+            }
+        }
+
+        // ✅ Solde Final
+        return [
+            'solde_usd' => round($soldeCaisseUSD + $soldeClientUSD + $soldeDiversUSD + $soldeFournisseurUSD, 2),
+            'solde_gnf' => round($soldeCaisseGNF + $soldeClientGNF + $soldeDiversGNF + $soldeFournisseurGNF, 2),
+        ];
+    }
+
 }
