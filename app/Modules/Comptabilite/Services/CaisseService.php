@@ -1,7 +1,6 @@
 <?php
 namespace App\Modules\Comptabilite\Services;
 
-use App\Modules\Administration\Models\Fournisseur;
 use App\Modules\Comptabilite\Models\Caisse;
 use App\Modules\Comptabilite\Models\TypeOperation;
 use App\Modules\Comptabilite\Resources\CaisseResource;
@@ -170,7 +169,6 @@ class CaisseService
         ];
     }
 
-  
     public function calculerSoldeGlobal(): array
     {
         // ✅ Solde Caisse (seuls flux légitimes)
@@ -179,68 +177,69 @@ class CaisseService
         $total_usd = $soldeCaisse['solde_usd'];
         $total_gnf = $soldeCaisse['solde_gnf'];
 
-        // ✅ Flux global = flux caisse uniquement (pas de double comptage)
+        // ✅ Flux global = flux caisse uniquement
         $entrees_usd = $soldeCaisse['entrees_usd'];
         $sorties_usd = $soldeCaisse['sorties_usd'];
         $entrees_gnf = $soldeCaisse['entrees_gnf'];
         $sorties_gnf = $soldeCaisse['sorties_gnf'];
 
         // ✅ Clients
-        $soldeClientsUSD = 0;
-        $soldeClientsGNF = 0;
+        $soldeClientsUSD  = 0;
+        $soldeClientsGNF  = 0;
+        $entreeClientsUSD = 0;
+        $entreeClientsGNF = 0;
+        $sortieClientsUSD = 0;
+        $sortieClientsGNF = 0;
 
         foreach (Client::all(['id']) as $client) {
             $s = app(ClientService::class)->calculerSoldeClient($client->id);
+
             $soldeClientsUSD += $s['solde_usd'];
             $soldeClientsGNF += $s['solde_gnf'];
+            $entreeClientsUSD += $s['entrees_usd'];
+            $entreeClientsGNF += $s['entrees_gnf'];
+            $sortieClientsUSD += $s['sorties_usd'];
+            $sortieClientsGNF += $s['sorties_gnf'];
+
             $total_usd += $s['solde_usd'];
             $total_gnf += $s['solde_gnf'];
         }
 
         // ✅ Divers
-        $soldeDiversUSD = 0;
-        $soldeDiversGNF = 0;
+        $soldeDiversUSD  = 0;
+        $soldeDiversGNF  = 0;
+        $entreeDiversUSD = 0;
+        $entreeDiversGNF = 0;
+        $sortieDiversUSD = 0;
+        $sortieDiversGNF = 0;
 
         foreach (Divers::all(['id']) as $divers) {
             $s = app(DiversService::class)->calculerSoldeDivers($divers->id);
+
             $soldeDiversUSD += $s['usd'];
             $soldeDiversGNF += $s['gnf'];
+            $entreeDiversUSD += $s['entrees_usd'];
+            $entreeDiversGNF += $s['entrees_gnf'];
+            $sortieDiversUSD += $s['sorties_usd'];
+            $sortieDiversGNF += $s['sorties_gnf'];
+
             $total_usd += $s['usd'];
             $total_gnf += $s['gnf'];
         }
 
-        // // ✅ Fournisseurs
-        // $soldeFournisseursUSD = 0;
-        // $soldeFournisseursGNF = 0;
-
-        // foreach (Fournisseur::all(['id']) as $f) {
-        //     $fournisseurSoldes = $this->soldeGlobalFournisseur($f->id);
-
-        //     foreach ($fournisseurSoldes as $item) {
-        //         if ($item['symbole'] === 'USD') {
-        //             $soldeFournisseursUSD += $item['montant'];
-        //             $total_usd += $item['montant'];
-        //         } elseif ($item['symbole'] === 'GNF') {
-        //             $soldeFournisseursGNF += $item['montant'];
-        //             $total_gnf += $item['montant'];
-        //         }
-        //     }
-        // }
-
-        // ✅ Résultat final avec Détails (Debug ON)
+        // ✅ Résultat final avec Détails complet
         return [
             'solde_usd'   => round($total_usd, 2),
             'solde_gnf'   => round($total_gnf, 2),
 
-            // ✅ Reporting global → UNIQUEMENT flux caisse
+            // ✅ Flux global = caisse seulement !
             'entrees_usd' => round($entrees_usd, 2),
             'sorties_usd' => round($sorties_usd, 2),
             'entrees_gnf' => round($entrees_gnf, 2),
             'sorties_gnf' => round($sorties_gnf, 2),
 
-            // ✅ Détails sources (debug uniquement)
             'details'     => [
-                'caisse'       => [
+                'caisse'  => [
                     'solde_usd'   => $soldeCaisse['solde_usd'],
                     'solde_gnf'   => $soldeCaisse['solde_gnf'],
                     'entrees_usd' => $soldeCaisse['entrees_usd'],
@@ -248,18 +247,22 @@ class CaisseService
                     'entrees_gnf' => $soldeCaisse['entrees_gnf'],
                     'sorties_gnf' => $soldeCaisse['sorties_gnf'],
                 ],
-                'clients'      => [
-                    'solde_usd' => round($soldeClientsUSD, 2),
-                    'solde_gnf' => round($soldeClientsGNF, 2),
+                'clients' => [
+                    'solde_usd'   => round($soldeClientsUSD, 2),
+                    'solde_gnf'   => round($soldeClientsGNF, 2),
+                    'entrees_usd' => round($entreeClientsUSD, 2),
+                    'sorties_usd' => round($sortieClientsUSD, 2),
+                    'entrees_gnf' => round($entreeClientsGNF, 2),
+                    'sorties_gnf' => round($sortieClientsGNF, 2),
                 ],
-                'divers'       => [
-                    'solde_usd' => round($soldeDiversUSD, 2),
-                    'solde_gnf' => round($soldeDiversGNF, 2),
+                'divers'  => [
+                    'solde_usd'   => round($soldeDiversUSD, 2),
+                    'solde_gnf'   => round($soldeDiversGNF, 2),
+                    'entrees_usd' => round($entreeDiversUSD, 2),
+                    'sorties_usd' => round($sortieDiversUSD, 2),
+                    'entrees_gnf' => round($entreeDiversGNF, 2),
+                    'sorties_gnf' => round($sortieDiversGNF, 2),
                 ],
-                // 'fournisseurs' => [
-                //     'solde_usd' => round($soldeFournisseursUSD, 2),
-                //     'solde_gnf' => round($soldeFournisseursGNF, 2),
-                // ],
             ],
         ];
     }
