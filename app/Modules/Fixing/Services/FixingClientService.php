@@ -1,6 +1,8 @@
 <?php
 namespace App\Modules\Fixing\Services;
 
+use App\Modules\Comptabilite\Models\OperationClient;
+use App\Modules\Comptabilite\Models\OperationDivers;
 use App\Modules\Fixing\Models\FixingClient;
 use App\Modules\Fixing\Resources\FixingClientResource;
 use App\Modules\Fondation\Models\Fondation;
@@ -265,7 +267,7 @@ class FixingClientService
             'prix_unitaire' => $prixUnitaireTronque,
             'poids_total'   => round($poidsTotal, 2),
             'carrat_moyen'  => $carratMoyen,
-            'purete_totale' =>round($pureteTotale,2) ,
+            'purete_totale' => round($pureteTotale, 2),
             'fondations'    => $details,
             'total_facture' => $totalFactureTronque,
         ];
@@ -287,15 +289,15 @@ class FixingClientService
                 ->groupBy('status')
                 ->pluck('total', 'status')
                 ->toArray();
-            $poids_fixer=$this->fixingsClientSemaine();
+            $poids_fixer = $this->fixingsClientSemaine();
 
             return response()->json([
                 'status'  => 200,
                 'message' => 'Statistiques des fixings récupérées avec succès.',
                 'data'    => [
-                    'en_attente' => $stats['en attente'] ?? 0,
-                    'confirmer'  => $stats['confirmer'] ?? 0,
-                    'poids_fixer' => $poids_fixer
+                    'en_attente'  => $stats['en attente'] ?? 0,
+                    'confirmer'   => $stats['confirmer'] ?? 0,
+                    'poids_fixer' => $poids_fixer,
 
                 ],
             ], 200);
@@ -326,7 +328,7 @@ class FixingClientService
             $total = 0;
             foreach ($fixings as $fixing) {
                 $calcul = app(FixingClientService::class)->calculerFacture($fixing->id);
-                $total += (float)($calcul['purete_totale'] ?? 0);
+                $total += (float) ($calcul['purete_totale'] ?? 0);
 
             }
 
@@ -338,6 +340,48 @@ class FixingClientService
         }
 
         return $statsFixingsSemaine;
+    }
+
+    public function statistiquesOperationsAujourdHui()
+    {
+        try {
+            $aujourdhui = Carbon::today();
+
+            // ✅ Opérations Client du jour
+            $opsClient = OperationClient::whereDate('created_at', $aujourdhui)->count();
+
+            // ✅ Opérations Divers du jour
+            $opsDivers = OperationDivers::whereDate('created_at', $aujourdhui)->count();
+
+            // ✅ Fixings Client du jour par statut
+            $fixingsEnAttente = FixingClient::where('status', 'en attente')
+                ->whereDate('created_at', $aujourdhui)
+                ->count();
+
+            $fixingsConfirmer = FixingClient::where('status', 'confirmer')
+                ->whereDate('created_at', $aujourdhui)
+                ->count();
+
+            return response()->json([
+                'status'  => 200,
+                'message' => 'Statistiques des opérations d\'aujourd\'hui récupérées avec succès.',
+                'data'    => [
+                    'operations_client'  => $opsClient,
+                    'operations_divers'  => $opsDivers,
+                    'fixings_en_attente' => $fixingsEnAttente,
+                    'fixings_confirmer'  => $fixingsConfirmer,
+                    'date'               => $aujourdhui->format('Y-m-d'),
+                ],
+            ], 200);
+
+        } catch (\Exception $e) {
+
+            return response()->json([
+                'status'  => 500,
+                'message' => 'Erreur lors de la récupération des statistiques.',
+                'error'   => $e->getMessage(),
+            ], 500);
+        }
     }
 
 }
