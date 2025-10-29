@@ -266,10 +266,14 @@ class CaisseService
 
                 if($symbole == 'usd'){
                     $total_usd += $soldeFournisseur['entrees_' . $symbole] - $soldeFournisseur['sorties_' . $symbole];
+                    $entrees_usd += $soldeFournisseur['entrees_' . $symbole];
+                    $sorties_usd += $soldeFournisseur['sorties_' . $symbole];
                 }
 
                 if($symbole == 'gnf'){
                     $total_gnf += $soldeFournisseur['entrees_' . $symbole] - $soldeFournisseur['sorties_' . $symbole];
+                    $entrees_gnf += $soldeFournisseur['entrees_' . $symbole];
+                    $sorties_gnf += $soldeFournisseur['sorties_' . $symbole];
                 }
             }
         }
