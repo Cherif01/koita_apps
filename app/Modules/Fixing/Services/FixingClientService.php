@@ -288,6 +288,7 @@ class FixingClientService
                 ->pluck('total', 'status')
                 ->toArray();
             $poids_fixer=$this->fixingsClientSemaine();
+            $poids_fixer_value = $poids_fixer['value'];
 
             return response()->json([
                 'status'  => 200,
@@ -295,7 +296,8 @@ class FixingClientService
                 'data'    => [
                     'en_attente' => $stats['en attente'] ?? 0,
                     'confirmer'  => $stats['confirmer'] ?? 0,
-                    'poids_fixer'=>$poids_fixer
+                    'poids_fixer' => round($poids_fixer_value, 2)
+
                 ],
             ], 200);
 
