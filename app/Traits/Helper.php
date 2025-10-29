@@ -293,6 +293,49 @@ trait Helper
     }
 
     /**
+     * Cette methode retourne le total entrees et sorties d'un fournisseur
+     * Grouper par devise
+     */
+    public function supplierBalancePerCurrency($fournisseurId)
+    {
+        // Initialize result array with all available currencies
+        $devises = Devise::all();
+        $result = [];
+        
+        foreach ($devises as $devise) {
+            $symbole = strtolower($devise->symbole);
+            $result["entrees_{$symbole}"] = 0;
+            $result["sorties_{$symbole}"] = 0;
+        }
+        
+        // Operations
+        $operations = FournisseurOperation::with(['typeOperation', 'devise'])
+            ->where('fournisseur_id', $fournisseurId)
+            ->get();
+        
+        foreach ($operations as $operation) {
+            $symbole = strtolower($operation->devise->symbole);
+            $nature = $operation->typeOperation->nature;
+            $key = ($nature == 1 ? 'entrees_' : 'sorties_') . $symbole;
+            $result[$key] += $operation->montant;
+        }
+        
+        // Fixings
+        $fixings = Fixing::with('devise')->where('fournisseur_id', $fournisseurId)->get();
+        
+        foreach ($fixings as $fixing) {
+            $montant = $fixing->fixingBarres()->exists()
+                ? $this->montantFixing($fixing->id)
+                : ($fixing->unit_price / 22) * $fixing->poids_pro * $fixing->carrat_moyenne;
+            
+            $key = 'entrees_' . strtolower($fixing->devise->symbole);
+            $result[$key] += $montant;
+        }
+        
+        return $result;
+    }
+
+    /**
      * Cette method retourne toute l'historique des transaction d'un fournisseur.
      */
     public function historiqueFournisseurComplet($fournisseurId)

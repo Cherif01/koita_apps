@@ -1,6 +1,7 @@
 <?php
 namespace App\Modules\Comptabilite\Services;
 
+use App\Modules\Administration\Models\Fournisseur;
 use App\Modules\Comptabilite\Models\Caisse;
 use App\Modules\Comptabilite\Models\TypeOperation;
 use App\Modules\Comptabilite\Resources\CaisseResource;
@@ -15,6 +16,8 @@ use Illuminate\Support\Facades\Auth;
 
 class CaisseService
 {
+    use Helper;
+
     /**
      * 🔹 Enregistrer une nouvelle opération de caisse
      */
@@ -241,6 +244,29 @@ class CaisseService
             $total_gnf += $s['gnf'];
         }
 
+        // Fournisseurs
+        $fournisseurs = Fournisseur::all();
+        $devises = Devise::all();
+        $soldeGlobalFournisseurs = [];
+
+        foreach($fournisseurs as $fournisseur){
+            $soldeFournisseur = $this->supplierBalancePerCurrency($fournisseur->id);
+
+            foreach($devises as $devise){
+                $symbole = strtolower($devise->symbole);
+                $soldeGlobalFournisseurs['entrees_' . $symbole] += round($soldeFournisseur['entrees_' . $symbole], 2); 
+                $soldeGlobalFournisseurs['sorties_' . $symbole] += round($soldeFournisseur['sorties_' . $symbole], 2); 
+
+                if($symbole == 'usd'){
+                    $total_usd += $soldeFournisseur['entrees_usd'] - $soldeFournisseur['sorties_usd'];
+                }
+
+                if($symbole == 'gnf'){
+                    $total_gnf += $soldeFournisseur['entrees_gnf'] - $soldeFournisseur['sorties_gnf'];
+                }
+            }
+        }
+
         return [
             'solde_usd'   => round($total_usd, 2),
             'solde_gnf'   => round($total_gnf, 2),
@@ -276,6 +302,7 @@ class CaisseService
                     'entrees_gnf' => round($entreeDiversGNF, 2),
                     'sorties_gnf' => round($sortieDiversGNF, 2),
                 ],
+                'fournisseurs' => $soldeGlobalFournisseurs
             ],
         ];
     }
