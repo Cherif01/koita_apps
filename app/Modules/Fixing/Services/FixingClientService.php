@@ -285,25 +285,26 @@ class FixingClientService
     public function statistiquesFixing()
     {
         try {
-            $stats = FixingClient::selectRaw('status, COUNT(*) as total')
+            $statsStatus = FixingClient::selectRaw('LOWER(status) as status, COUNT(*) as total')
                 ->groupBy('status')
                 ->pluck('total', 'status')
                 ->toArray();
-            $poids_fixer = $this->fixingsClientSemaine();
+
+            $statsWeek  = $this->fixingsClientSemaine();
+            $recentActs = $this->dernieresActivites();
 
             return response()->json([
                 'status'  => 200,
                 'message' => 'Statistiques des fixings récupérées avec succès.',
                 'data'    => [
-                    'en_attente'  => $stats['en attente'] ?? 0,
-                    'confirmer'   => $stats['confirmer'] ?? 0,
-                    'poids_fixer' => $poids_fixer,
-
+                    'en_attente'          => $statsStatus['en attente'] ?? 0,
+                    'confirmer'           => $statsStatus['confirmer'] ?? 0,
+                    'stats_semaine'       => $statsWeek,
+                    'dernieres_activites' => $recentActs,
                 ],
             ], 200);
 
         } catch (\Exception $e) {
-
             return response()->json([
                 'status'  => 500,
                 'message' => 'Erreur lors de la récupération des statistiques.',
@@ -382,6 +383,50 @@ class FixingClientService
                 'error'   => $e->getMessage(),
             ], 500);
         }
+    }
+
+    public function dernieresActivites(): array
+    {
+        $activites = collect([]);
+
+        FixingClient::latest()->take(5)->get(['id', 'status', 'created_at'])->each(function ($item) use (&$activites) {
+            $activites->push([
+                'type' => 'fixing_client',
+                'id'   => $item->id,
+                'info' => $item->status,
+                'date' => $item->created_at,
+            ]);
+        });
+
+        OperationClient::latest()->take(5)->get(['id', 'montant', 'created_at'])->each(function ($item) use (&$activites) {
+            $activites->push([
+                'type' => 'operation_client',
+                'id'   => $item->id,
+                'info' => (float) $item->montant,
+                'date' => $item->created_at,
+            ]);
+        });
+
+        OperationDivers::latest()->take(5)->get(['id', 'montant', 'created_at'])->each(function ($item) use (&$activites) {
+            $activites->push([
+                'type' => 'operation_divers',
+                'id'   => $item->id,
+                'info' => (float) $item->montant,
+                'date' => $item->created_at,
+            ]);
+        });
+
+        return $activites
+            ->sortByDesc('date')
+            ->values()
+            ->take(5)
+            ->map(fn($a) => [
+                'type' => $a['type'],
+                'id'   => $a['id'],
+                'info' => $a['info'],
+                'date' => $a['date']->format('Y-m-d H:i'),
+            ])
+            ->toArray();
     }
 
 }
