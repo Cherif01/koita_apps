@@ -69,11 +69,10 @@ class ClientController extends Controller
         return $this->clientService->truncateDatabaseExcept();
     }
 
-    public function getReleveClientPeriode(Request $request)
+    public function getReleveClientPeriode(Request $request, int $id_client)
     {
-        $id_client  = $request->input('id_client');
-        $date_debut = $request->input('date_debut');
-        $date_fin   = $request->input('date_fin');
+        $date_debut = $request->query('date_debut');
+        $date_fin   = $request->query('date_fin');
 
         return $this->clientService->getReleveClientPeriode1($id_client, $date_debut, $date_fin);
     }
