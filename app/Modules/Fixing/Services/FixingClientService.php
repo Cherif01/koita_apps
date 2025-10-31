@@ -267,6 +267,8 @@ class FixingClientService
             'prix_unitaire' => $prixUnitaireTronque,
             'poids_total'   => round($poidsTotal, 2),
             'carrat_moyen'  => $carratMoyen,
+            'bourse'        => $bourse,
+            'discompte'     => $discompte,
             'purete_totale' => round($pureteTotale, 2),
             'fondations'    => $details,
             'total_facture' => $totalFactureTronque,

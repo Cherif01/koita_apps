@@ -341,14 +341,17 @@ class ClientService
             ->where('id_client', $id_client)
             ->get()
             ->map(function ($fix) {
-                $calcul = app(FixingClientService::class)->calculerFacture($fix->id);
+                $calcul    = app(FixingClientService::class)->calculerFacture($fix->id);
+                $purete    = $calcul['purete_totale'] ?? 0;
+                $bourse    = $calcul['bourse'] ?? 0;
+                $discompte = $calcul['discompte'] ?? 0;
 
                 return [
                     'date'           => $fix->created_at?->format('Y-m-d H:i:s'),
                     'date_operation' => null,
                     'reference'      => $fix->reference ?? null,
                     'type'           => 'fixing',
-                    'libelle'        => "Facturation du {$calcul['purete_totale']} g",
+                    'libelle'        => "Facturation du {$purete} g | Bourse : {$bourse} | Discompte : {$discompte}",
                     'devise' => $fix->devise?->symbole ?? '',
                     'debit'  => (float) ($calcul['total_facture'] ?? 0),
                     'credit' => 0,
