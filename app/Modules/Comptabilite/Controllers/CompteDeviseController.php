@@ -5,7 +5,9 @@ namespace App\Modules\Comptabilite\Controllers;
 use App\Http\Controllers\Controller;
 use App\Modules\Comptabilite\Models\CompteDevise;
 use App\Modules\Comptabilite\Requests\CompteDeviseRequest;
+use App\Modules\Settings\Models\Devise;
 use App\Traits\ApiResponses;
+use Illuminate\Support\Facades\Auth;
 
 class CompteDeviseController extends Controller
 {
@@ -21,6 +23,23 @@ class CompteDeviseController extends Controller
         // Code here...
     }
 
+    public function comptes(string $id)
+    {
+        $devise = Devise::find($id);
+
+        if(! $devise){
+            return $this->errorResponse("Devise introuvable");
+        }
+
+        $compte_devises = CompteDevise::with('devise', 'compte')->where('devise_id', $devise->id)->get();
+
+        if(! $compte_devises){
+            return $this->errorResponse("Cette devise n'est lié a aucun compte.");
+        }
+
+        return $this->successResponse($compte_devises, "Liste de tous les compte lié a la devise ont été bien chargé.");
+    }
+
     public function store(CompteDeviseRequest $request)
     {
         $fields = $request->validated();
@@ -32,6 +51,7 @@ class CompteDeviseController extends Controller
         }
 
         $fields['solde_courant'] = $fields['solde_initial'];
+        $fields['created_by'] = Auth::id();
 
         $compte_devise = CompteDevise::create($fields);
 
@@ -52,6 +72,8 @@ class CompteDeviseController extends Controller
         if($cpt_devise){
             return $this->errorResponse("Ce compte est déjà affecté a cette devise");
         }
+
+        $fields['updated_by'] = Auth::id();
 
         $compte_devise->update($fields);
 

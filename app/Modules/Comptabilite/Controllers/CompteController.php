@@ -4,6 +4,7 @@ namespace App\Modules\Comptabilite\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Modules\Comptabilite\Models\Compte;
+use App\Modules\Comptabilite\Models\CompteDevise;
 use App\Modules\Comptabilite\Requests\StoreCompteRequest;
 use App\Modules\Comptabilite\Resources\CompteResource;
 use App\Traits\ApiResponses;
@@ -37,6 +38,16 @@ class CompteController extends Controller
         $fields['created_by'] = Auth::id();
 
         $compte = Compte::create($fields);
+
+        if(!is_null($fields['devise_id'])){
+            CompteDevise::create([
+                'devise_id' => $fields['devise_id'],
+                'compte_id' => $compte->id,
+                'solde_initial' => $fields['solde_initial'] ?? 0,
+                'solde_courant' => $fields['solde_initial'] ?? 0,
+                'created_by' => Auth::id()
+            ]);
+        }
 
         return $this->successResponse($compte, "Nouveau compte ajouté avec succès.");
     }
