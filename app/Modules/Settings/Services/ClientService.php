@@ -256,13 +256,14 @@ class ClientService
         $soldes = [];
 
         foreach ($devises as $devise) {
-            $symbole = $devise->symbole;
+            // 🔸 Convertir le symbole en minuscule
+            $symbole = strtolower($devise->symbole);
 
-            // 🔸 Total par nature (1 = entrée, 0 = sortie)
+            // 🔸 Calcul du total par nature (1 = entrée, 0 = sortie)
             $getTotalParNature = function (int $nature) use ($id_client, $symbole) {
                 return OperationClient::where('id_client', $id_client)
                     ->whereHas('typeOperation', fn($q) => $q->where('nature', $nature))
-                    ->whereHas('devise', fn($q) => $q->where('symbole', $symbole))
+                    ->whereHas('devise', fn($q) => $q->whereRaw('LOWER(symbole) = ?', [$symbole]))
                     ->sum('montant');
             };
 
@@ -272,7 +273,7 @@ class ClientService
             // 🔹 Ajouter les factures (fixings)
             $fixings = FixingClient::with('devise')
                 ->where('id_client', $id_client)
-                ->whereHas('devise', fn($q) => $q->where('symbole', $symbole))
+                ->whereHas('devise', fn($q) => $q->whereRaw('LOWER(symbole) = ?', [$symbole]))
                 ->get();
 
             foreach ($fixings as $fixing) {
@@ -281,7 +282,7 @@ class ClientService
                 $sorties += $montant;
             }
 
-            // 🔹 Stocker le solde par devise
+            // 🔹 Stocker le solde par devise (clé en minuscule)
             $soldes[$symbole] = round($entrees - $sorties, 2);
         }
 
