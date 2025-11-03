@@ -20,7 +20,7 @@ class DiversResource extends JsonResource
             'telephone'      => $this->telephone,
             'adresse'        => $this->adresse,
             'type'           => $this->type,
-            'soldes'         => $solde,
+            'soldes'         => $solde['soldes'],
 
             'releve'         => $releve,
 
