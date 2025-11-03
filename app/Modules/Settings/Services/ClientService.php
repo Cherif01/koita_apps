@@ -323,8 +323,86 @@ class ClientService
         }
     }
 
+    // public function getReleveClient(int $id_client): array
+    // {
+    //     $operationsClient = OperationClient::with(['typeOperation', 'devise'])
+    //         ->where('id_client', $id_client)
+    //         ->get()
+    //         ->map(function ($op) {
+    //             $nature = $op->typeOperation?->nature; // 1 = entrée, 0 = sortie
+    //             return [
+    //                 'date'           => $op->created_at?->format('Y-m-d H:i:s'),
+    //                 'date_operation' => $op->date_operation,
+    //                 'reference'      => $op->reference,
+    //                 'type'           => 'operation_client',
+    //                 'libelle'        => $op->typeOperation?->libelle ?? 'Opération client',
+    //                 'devise'         => $op->devise?->symbole ?? '',
+    //                 'debit'          => $nature == 0 ? (float) $op->montant : 0,
+    //                 'credit'         => $nature == 1 ? (float) $op->montant : 0,
+    //             ];
+    //         });
+
+    //     $fixings = FixingClient::with(['devise'])
+    //         ->where('id_client', $id_client)
+    //         ->get()
+    //         ->map(function ($fix) {
+    //             $calcul    = app(FixingClientService::class)->calculerFacture($fix->id);
+    //             $purete    = $calcul['purete_totale'] ?? 0;
+    //             $bourse    = $calcul['bourse'] ?? 0;
+    //             $discompte = $calcul['discompte'] ?? 0;
+
+    //             return [
+    //                 'date'           => $fix->created_at?->format('Y-m-d H:i:s'),
+    //                 'date_operation' => null,
+    //                 'reference'      => $fix->reference ?? null,
+    //                 'type'           => 'fixing',
+    //                 'libelle'        => "Facturation du {$purete} g | Bourse : {$bourse} | Discompte : {$discompte}",
+    //                 'devise' => $fix->devise?->symbole ?? '',
+    //                 'debit'  => (float) ($calcul['total_facture'] ?? 0),
+    //                 'credit' => 0,
+    //             ];
+    //         });
+
+    //     // ✅ Fusion et tri du plus ancien au plus récent pour calcul des soldes
+    //     $data = $operationsClient->concat($fixings)
+    //         ->sortBy('date')
+    //         ->values()
+    //         ->toArray();
+
+    //     $soldeUSD = 0;
+    //     $soldeGNF = 0;
+    //     $usdList  = [];
+    //     $gnfList  = [];
+
+    //     // ✅ Calcul des soldes progressifs
+    //     foreach ($data as $ligne) {
+    //         if ($ligne['devise'] === 'USD') {
+    //             $soldeUSD += $ligne['credit'] - $ligne['debit'];
+    //             $ligne['solde_apres'] = round($soldeUSD, 2);
+    //             $usdList[]            = $ligne;
+    //         } elseif ($ligne['devise'] === 'GNF') {
+    //             $soldeGNF += $ligne['credit'] - $ligne['debit'];
+    //             $ligne['solde_apres'] = round($soldeGNF, 2);
+    //             $gnfList[]            = $ligne;
+    //         }
+    //     }
+
+    //     // ✅ Inversion pour afficher du plus récent au plus ancien
+    //     $usdList = array_reverse($usdList);
+    //     $gnfList = array_reverse($gnfList);
+
+    //     return [
+    //         'usd' => $usdList,
+    //         'gnf' => $gnfList,
+    //     ];
+    // }
+
     public function getReleveClient(int $id_client): array
     {
+        // 🔹 Récupérer toutes les devises actives
+        $devises = Devise::pluck('symbole')->map(fn($s) => strtolower($s));
+
+        // 🔹 1. Récupérer les opérations du client
         $operationsClient = OperationClient::with(['typeOperation', 'devise'])
             ->where('id_client', $id_client)
             ->get()
@@ -336,12 +414,13 @@ class ClientService
                     'reference'      => $op->reference,
                     'type'           => 'operation_client',
                     'libelle'        => $op->typeOperation?->libelle ?? 'Opération client',
-                    'devise'         => $op->devise?->symbole ?? '',
+                    'devise'         => strtolower($op->devise?->symbole ?? ''),
                     'debit'          => $nature == 0 ? (float) $op->montant : 0,
                     'credit'         => $nature == 1 ? (float) $op->montant : 0,
                 ];
             });
 
+        // 🔹 2. Récupérer les fixings du client
         $fixings = FixingClient::with(['devise'])
             ->where('id_client', $id_client)
             ->get()
@@ -357,44 +436,47 @@ class ClientService
                     'reference'      => $fix->reference ?? null,
                     'type'           => 'fixing',
                     'libelle'        => "Facturation du {$purete} g | Bourse : {$bourse} | Discompte : {$discompte}",
-                    'devise' => $fix->devise?->symbole ?? '',
+                    'devise' => strtolower($fix->devise?->symbole ?? ''),
                     'debit'  => (float) ($calcul['total_facture'] ?? 0),
                     'credit' => 0,
                 ];
             });
 
-        // ✅ Fusion et tri du plus ancien au plus récent pour calcul des soldes
+        // 🔹 3. Fusionner toutes les opérations
         $data = $operationsClient->concat($fixings)
             ->sortBy('date')
             ->values()
             ->toArray();
 
-        $soldeUSD = 0;
-        $soldeGNF = 0;
-        $usdList  = [];
-        $gnfList  = [];
+        // 🔹 4. Initialiser les soldes par devise
+        $soldes    = [];
+        $resultats = [];
 
-        // ✅ Calcul des soldes progressifs
-        foreach ($data as $ligne) {
-            if ($ligne['devise'] === 'USD') {
-                $soldeUSD += $ligne['credit'] - $ligne['debit'];
-                $ligne['solde_apres'] = round($soldeUSD, 2);
-                $usdList[]            = $ligne;
-            } elseif ($ligne['devise'] === 'GNF') {
-                $soldeGNF += $ligne['credit'] - $ligne['debit'];
-                $ligne['solde_apres'] = round($soldeGNF, 2);
-                $gnfList[]            = $ligne;
-            }
+        foreach ($devises as $symbole) {
+            $soldes[$symbole]    = 0;
+            $resultats[$symbole] = [];
         }
 
-        // ✅ Inversion pour afficher du plus récent au plus ancien
-        $usdList = array_reverse($usdList);
-        $gnfList = array_reverse($gnfList);
+        // 🔹 5. Calcul des soldes progressifs dynamiques
+        foreach ($data as $ligne) {
+            $symbole = $ligne['devise'];
 
-        return [
-            'usd' => $usdList,
-            'gnf' => $gnfList,
-        ];
+            if (! isset($soldes[$symbole])) {
+                $soldes[$symbole]    = 0;
+                $resultats[$symbole] = [];
+            }
+
+            $soldes[$symbole] += $ligne['credit'] - $ligne['debit'];
+            $ligne['solde_apres']  = round($soldes[$symbole], 2);
+            $resultats[$symbole][] = $ligne;
+        }
+
+        // 🔹 6. Inverser les listes (du plus récent au plus ancien)
+        foreach ($resultats as $symbole => &$list) {
+            $list = array_reverse($list);
+        }
+
+        return $resultats;
     }
 
     public function calculerStockClient(int $id_client): array
