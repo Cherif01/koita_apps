@@ -25,7 +25,7 @@ class StoreOperationClientRequest extends FormRequest
             'id_client'         => 'required|integer|exists:clients,id',
             'id_type_operation' => 'required|integer|exists:type_operations,id',
             'id_devise'         => 'required|integer|exists:devises,id',
-            'id_compte'         => 'nullable|integer|exists:comptes,id', // ✅ Nouveau champ
+            'id_compte'         => 'required|integer|exists:comptes,id', // ✅ Nouveau champ
             'montant'           => 'required|numeric|min:0',
             'taux_jour'         => 'nullable|numeric|min:0',
             'reference'         => 'nullable|string|max:100',
