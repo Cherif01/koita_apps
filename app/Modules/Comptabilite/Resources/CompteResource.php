@@ -16,7 +16,7 @@ class CompteResource extends JsonResource
             'id' => $this->id,
             'solde_initial' => $this->solde_initial,
             'numero_compte' => $this->numero_compte,
-            // 'solde' => $this->getAccountBalanceByDevise($this->compte->id, $this->devise->id),
+            'solde' => $this->getAccountBalanceByDevise($this->id),
 
             'devise' => [
                 'id' => $this->devise->id,
@@ -24,6 +24,12 @@ class CompteResource extends JsonResource
                 'symbole' => $this->devise->symbole,
             ],
 
+            'banque' => [
+                'id' => $this->banque->id,
+                'libelle' => $this->banque->libelle,
+                'api' => $this->banque->api ?? null,
+                'commentaire' => $this->banque->commentaire ?? null,
+            ],
 
             'createdBy' => $this->createdBy ? [
                 'id' => $this->createdBy->id ?? null,

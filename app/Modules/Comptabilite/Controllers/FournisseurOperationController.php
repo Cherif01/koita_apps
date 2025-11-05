@@ -3,6 +3,7 @@
 namespace App\Modules\Comptabilite\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Modules\Comptabilite\Models\Compte;
 use App\Modules\Comptabilite\Models\FournisseurOperation;
 use App\Modules\Comptabilite\Requests\StoreFournisseurOperationRequest;
 use App\Modules\Comptabilite\Resources\FournisseurOperationResource;
@@ -40,6 +41,12 @@ class FournisseurOperationController extends Controller
             $fields['reference'] = 'REF' . round(1000, 9999);
         }
 
+        $compte = Compte::find($fields['compte_id']);
+
+        if($compte && $compte->devise_id != $fields['devise_id']){
+            return $this->errorResponse("Veuillez choisir une devise qui correspond au compte.");
+        }
+
         $fournisseur_operation = FournisseurOperation::create($fields);
 
         return $this->successResponse($fournisseur_operation, "Operation du fournisseur enrégistrée avec succès.");
@@ -52,9 +59,16 @@ class FournisseurOperationController extends Controller
         if(! $fournisseur_operation){
             return $this->errorResponse("Operation fournisseur introuvable");
         }
+        
 
         $fields = $request->validated();
         $fields['updated_by'] = Auth::id();
+
+        $compte = Compte::find($fields['compte_id']);
+
+        if($compte && $compte->devise_id != $fields['devise_id']){
+            return $this->errorResponse("Veuillez choisir une devise qui correspond au compte.");
+        }
 
         $fournisseur_operation->update($fields);
 
