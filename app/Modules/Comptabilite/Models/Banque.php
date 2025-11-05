@@ -20,11 +20,6 @@ class Banque extends Model
         'updated_by'
     ];
 
-    public function fournisseurOperations() : HasMany
-    {
-        return $this->hasMany(FournisseurOperation::class)->whereNull('fournisseur_operations.deleted_at');
-    }
-
     public function createdBy() : BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
@@ -35,7 +30,7 @@ class Banque extends Model
         return $this->belongsTo(User::class, 'updated_by');
     }
 
-    public function compte(): HasMany
+    public function comptes(): HasMany
     {
         return $this->hasMany(Compte::class);
     }

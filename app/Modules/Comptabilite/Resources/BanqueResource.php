@@ -21,7 +21,16 @@ class BanqueResource extends JsonResource
             'api' => $this->api ?? null,
             'commentaire' => $this->commentaire ?? null,
 
-            // 'soldes' => $this->getAccountBalance($this->id),
+            'comptes' => $this->comptes->map(function ($compte){
+                return [
+                    'id' => $compte->id,
+                    'devise_libelle' => $compte->devise->libelle,
+                    'devise_symbole' => $compte->devise->symbole,
+                    'solde_initial' => $compte->solde_initial,
+                    'numero_compte' => $compte->numero_compte,
+                    'solde' => $this->getAccountBalanceByDevise($compte->id)
+                ];
+            }),
 
             'createdBy' => $this->createdBy ? [
                 'id' => $this->createdBy->id ?? null,

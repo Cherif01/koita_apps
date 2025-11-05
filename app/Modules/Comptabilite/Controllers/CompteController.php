@@ -22,7 +22,7 @@ class CompteController extends Controller
 
     public function show(string $id)
     {
-        $compte = Compte::find($id);
+        $compte = Compte::with('banque', 'devise', 'createdBy', 'updatedBy')->find($id);
 
         if(! $compte){
             return $this->errorResponse("Compte introuvable.");

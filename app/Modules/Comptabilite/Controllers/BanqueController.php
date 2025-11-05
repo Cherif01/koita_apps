@@ -15,14 +15,14 @@ class BanqueController extends Controller
 
     public function index()
     {
-        $banques = Banque::with('fournisseurOperations', 'createdBy', 'updatedBy')->get();
+        $banques = Banque::with('comptes', 'createdBy', 'updatedBy')->get();
 
         return $this->successResponse(BanqueResource::collection($banques), "Liste des banques chargé avec succès.");
     }
 
     public function show(string $id)
     {
-        $banque = Banque::with('fournisseurOperations', 'createdBy', 'updatedBy')->find($id);
+        $banque = Banque::with('comptes', 'createdBy', 'updatedBy')->find($id);
 
         if(! $banque){
             return $this->errorResponse("Banque introuvable");

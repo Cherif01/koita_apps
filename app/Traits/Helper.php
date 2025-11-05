@@ -4,6 +4,7 @@ namespace App\Traits;
 
 use App\Modules\Administration\Models\Fournisseur;
 use App\Modules\Comptabilite\Models\Caisse;
+use App\Modules\Comptabilite\Models\Compte;
 use App\Modules\Comptabilite\Models\FournisseurOperation;
 use App\Modules\Comptabilite\Models\OperationClient;
 use App\Modules\Comptabilite\Models\OperationDivers;
@@ -593,80 +594,84 @@ trait Helper
     /**
      * Cette methode retourne un seul solde dans une devise d'un compte donné
      */
-    // public function getAccountBalanceByDevise($compteId, $deviseId)
-    // {
-    //     // FournisseurOperation
-    //     $fournisseurTotal = FournisseurOperation::with(['typeOperation:id,nature'])
-    //         ->where('compte_id', $compteId)
-    //         ->where('devise_id', $deviseId)
-    //         ->get()
-    //         ->filter(function ($operation) {
-    //             return $operation->typeOperation;
-    //         })
-    //         ->reduce(function ($carry, $operation) {
-    //             if ($operation->typeOperation->nature == 1) {
-    //                 return $carry + $operation->montant; // Deposit
-    //             } else {
-    //                 return $carry - $operation->montant; // Withdrawal
-    //             }
-    //         }, 0) ?? 0;
-
-    //     // OperationClient
-    //     $clientTotal = OperationClient::with(['typeOperation:id,nature'])
-    //         ->where('id_compte', $compteId)
-    //         ->where('id_devise', $deviseId)
-    //         ->get()
-    //         ->filter(function ($operation) {
-    //             return $operation->typeOperation;
-    //         })
-    //         ->reduce(function ($carry, $operation) {
-    //             if ($operation->typeOperation->nature == 1) {
-    //                 return $carry + $operation->montant;
-    //             } else {
-    //                 return $carry - $operation->montant;
-    //             }
-    //         }, 0) ?? 0;
-
-    //     // OperationDivers
-    //     $diversTotal = OperationDivers::with(['typeOperation:id,nature'])
-    //         ->where('id_compte', $compteId)
-    //         ->where('id_devise', $deviseId)
-    //         ->get()
-    //         ->filter(function ($operation) {
-    //             return $operation->typeOperation;
-    //         })
-    //         ->reduce(function ($carry, $operation) {
-    //             if ($operation->typeOperation->nature == 1) {
-    //                 return $carry + $operation->montant;
-    //             } else {
-    //                 return $carry - $operation->montant;
-    //             }
-    //         }, 0) ?? 0;
-
-    //     // CaisseOperation
-    //     $caisseTotal = Caisse::with(['typeOperation:id,nature'])
-    //         ->where('id_compte', $compteId)
-    //         ->where('id_devise', $deviseId)
-    //         ->get()
-    //         ->filter(function ($operation) {
-    //             return $operation->typeOperation;
-    //         })
-    //         ->reduce(function ($carry, $operation) {
-    //             if ($operation->typeOperation->nature == 1) {
-    //                 return $carry + $operation->montant;
-    //             } else {
-    //                 return $carry - $operation->montant;
-    //             }
-    //         }, 0) ?? 0;
-
-    //     // Solde initial
-    //     $solde_initial = CompteDevise::where('compte_id', $compteId)->where('devise_id', $deviseId)->value('solde_initial') ?? 0;
+    public function getAccountBalanceByDevise($compteId)
+    {
+        $compte = Compte::find($compteId);
         
-    //     // Sum all totals
-    //     $totalBalance = $fournisseurTotal + $clientTotal + $diversTotal + $caisseTotal + $solde_initial;
+        if(! $compte){
+            return 0;
+        }
 
-    //     return round($totalBalance, 2);
-    // }
+        // FournisseurOperation
+        $fournisseurTotal = FournisseurOperation::with(['typeOperation:id,nature'])
+            ->where('compte_id', $compte->id)
+            ->where('devise_id', $compte->devise_id)
+            ->get()
+            ->filter(function ($operation) {
+                return $operation->typeOperation;
+            })
+            ->reduce(function ($carry, $operation) {
+                if ($operation->typeOperation->nature == 1) {
+                    return $carry + $operation->montant; // Deposit
+                } else {
+                    return $carry - $operation->montant; // Withdrawal
+                }
+            }, 0) ?? 0;
+
+        // OperationClient
+        $clientTotal = OperationClient::with(['typeOperation:id,nature'])
+            ->where('id_compte', $compte->id)
+            ->where('id_devise', $compte->devise_id)
+            ->get()
+            ->filter(function ($operation) {
+                return $operation->typeOperation;
+            })
+            ->reduce(function ($carry, $operation) {
+                if ($operation->typeOperation->nature == 1) {
+                    return $carry + $operation->montant;
+                } else {
+                    return $carry - $operation->montant;
+                }
+            }, 0) ?? 0;
+
+        // OperationDivers
+        $diversTotal = OperationDivers::with(['typeOperation:id,nature'])
+            ->where('id_compte', $compte->id)
+            ->where('id_devise', $compte->devise_id)
+            ->get()
+            ->filter(function ($operation) {
+                return $operation->typeOperation;
+            })
+            ->reduce(function ($carry, $operation) {
+                if ($operation->typeOperation->nature == 1) {
+                    return $carry + $operation->montant;
+                } else {
+                    return $carry - $operation->montant;
+                }
+            }, 0) ?? 0;
+
+        // CaisseOperation
+        $caisseTotal = Caisse::with(['typeOperation:id,nature'])
+            ->where('id_compte', $compte->id)
+            ->where('id_devise', $compte->devise_id)
+            ->get()
+            ->filter(function ($operation) {
+                return $operation->typeOperation;
+            })
+            ->reduce(function ($carry, $operation) {
+                if ($operation->typeOperation->nature == 1) {
+                    return $carry + $operation->montant;
+                } else {
+                    return $carry - $operation->montant;
+                }
+            }, 0) ?? 0;
+
+        
+        // Sum all totals
+        $totalBalance = $fournisseurTotal + $clientTotal + $diversTotal + $caisseTotal + $compte->solde_initial;
+
+        return round($totalBalance, 2);
+    }
 
     public function arroundir(int $precision, float $valeur): float
     {
