@@ -99,7 +99,7 @@ class CaisseService
                 'data'    => [
 
                     'operations'  => CaisseResource::collection($caisses),
-                    'soldeGlobal' => $this->calculerSoldeGlobal(),
+                   
                 ],
             ]);
         } catch (Exception $e) {
@@ -271,150 +271,150 @@ class CaisseService
         ];
     }
 
-    public function calculerSoldeGlobal(): array
-    {
-        // ✅ Solde Caisse
-        $soldeCaisse = $this->calculerSoldeCaisse();
+    // public function calculerSoldeGlobal(): array
+    // {
+    //     // ✅ Solde Caisse
+    //     $soldeCaisse = $this->calculerSoldeCaisse();
 
-        $total_usd = $soldeCaisse['solde_usd'];
-        $total_gnf = $soldeCaisse['solde_gnf'];
+    //     $total_usd = $soldeCaisse['solde_usd'];
+    //     $total_gnf = $soldeCaisse['solde_gnf'];
 
-        // ✅ Flux global = flux CAISSE uniquement AU DÉPART
-        $entrees_usd = $soldeCaisse['entrees_usd'];
-        $sorties_usd = $soldeCaisse['sorties_usd'];
-        $entrees_gnf = $soldeCaisse['entrees_gnf'];
-        $sorties_gnf = $soldeCaisse['sorties_gnf'];
+    //     // ✅ Flux global = flux CAISSE uniquement AU DÉPART
+    //     $entrees_usd = $soldeCaisse['entrees_usd'];
+    //     $sorties_usd = $soldeCaisse['sorties_usd'];
+    //     $entrees_gnf = $soldeCaisse['entrees_gnf'];
+    //     $sorties_gnf = $soldeCaisse['sorties_gnf'];
 
-        // ✅ Clients
-        $soldeClientsUSD  = 0;
-        $soldeClientsGNF  = 0;
-        $entreeClientsUSD = 0;
-        $entreeClientsGNF = 0;
-        $sortieClientsUSD = 0;
-        $sortieClientsGNF = 0;
+    //     // ✅ Clients
+    //     $soldeClientsUSD  = 0;
+    //     $soldeClientsGNF  = 0;
+    //     $entreeClientsUSD = 0;
+    //     $entreeClientsGNF = 0;
+    //     $sortieClientsUSD = 0;
+    //     $sortieClientsGNF = 0;
 
-        foreach (Client::all(['id']) as $client) {
-            $s = app(ClientService::class)->calculerSoldeClient($client->id);
+    //     foreach (Client::all(['id']) as $client) {
+    //         $s = app(ClientService::class)->calculerSoldeClient($client->id);
 
-            $soldeClientsUSD += $s['solde_usd'];
-            $soldeClientsGNF += $s['solde_gnf'];
+    //         $soldeClientsUSD += $s['solde_usd'];
+    //         $soldeClientsGNF += $s['solde_gnf'];
 
-            // ✅ Ajout flux CLIENTS au flux GLOBAL
-            $entreeClientsUSD += $s['entrees_usd'];
-            $entreeClientsGNF += $s['entrees_gnf'];
-            $sortieClientsUSD += $s['sorties_usd'];
-            $sortieClientsGNF += $s['sorties_gnf'];
+    //         // ✅ Ajout flux CLIENTS au flux GLOBAL
+    //         $entreeClientsUSD += $s['entrees_usd'];
+    //         $entreeClientsGNF += $s['entrees_gnf'];
+    //         $sortieClientsUSD += $s['sorties_usd'];
+    //         $sortieClientsGNF += $s['sorties_gnf'];
 
-            $entrees_usd += $s['entrees_usd'];
-            $sorties_usd += $s['sorties_usd'];
-            $entrees_gnf += $s['entrees_gnf'];
-            $sorties_gnf += $s['sorties_gnf'];
+    //         $entrees_usd += $s['entrees_usd'];
+    //         $sorties_usd += $s['sorties_usd'];
+    //         $entrees_gnf += $s['entrees_gnf'];
+    //         $sorties_gnf += $s['sorties_gnf'];
 
-            $total_usd += $s['solde_usd'];
-            $total_gnf += $s['solde_gnf'];
-        }
+    //         $total_usd += $s['solde_usd'];
+    //         $total_gnf += $s['solde_gnf'];
+    //     }
 
-        // ✅ Divers
-        $soldeDiversUSD  = 0;
-        $soldeDiversGNF  = 0;
-        $entreeDiversUSD = 0;
-        $entreeDiversGNF = 0;
-        $sortieDiversUSD = 0;
-        $sortieDiversGNF = 0;
+    //     // ✅ Divers
+    //     $soldeDiversUSD  = 0;
+    //     $soldeDiversGNF  = 0;
+    //     $entreeDiversUSD = 0;
+    //     $entreeDiversGNF = 0;
+    //     $sortieDiversUSD = 0;
+    //     $sortieDiversGNF = 0;
 
-        foreach (Divers::all(['id']) as $divers) {
-            $s = app(DiversService::class)->calculerSoldeDivers($divers->id);
+    //     foreach (Divers::all(['id']) as $divers) {
+    //         $s = app(DiversService::class)->calculerSoldeDivers($divers->id);
 
-            $soldeDiversUSD += $s['usd'];
-            $soldeDiversGNF += $s['gnf'];
+    //         $soldeDiversUSD += $s['usd'];
+    //         $soldeDiversGNF += $s['gnf'];
 
-            // ✅ Ajout flux DIVERS au flux GLOBAL
-            $entreeDiversUSD += $s['entrees_usd'];
-            $entreeDiversGNF += $s['entrees_gnf'];
-            $sortieDiversUSD += $s['sorties_usd'];
-            $sortieDiversGNF += $s['sorties_gnf'];
+    //         // ✅ Ajout flux DIVERS au flux GLOBAL
+    //         $entreeDiversUSD += $s['entrees_usd'];
+    //         $entreeDiversGNF += $s['entrees_gnf'];
+    //         $sortieDiversUSD += $s['sorties_usd'];
+    //         $sortieDiversGNF += $s['sorties_gnf'];
 
-            $entrees_usd += $s['entrees_usd'];
-            $sorties_usd += $s['sorties_usd'];
-            $entrees_gnf += $s['entrees_gnf'];
-            $sorties_gnf += $s['sorties_gnf'];
+    //         $entrees_usd += $s['entrees_usd'];
+    //         $sorties_usd += $s['sorties_usd'];
+    //         $entrees_gnf += $s['entrees_gnf'];
+    //         $sorties_gnf += $s['sorties_gnf'];
 
-            $total_usd += $s['usd'];
-            $total_gnf += $s['gnf'];
-        }
+    //         $total_usd += $s['usd'];
+    //         $total_gnf += $s['gnf'];
+    //     }
 
-        // Fournisseurs
-        $fournisseurs            = Fournisseur::all();
-        $devises                 = Devise::all();
-        $soldeGlobalFournisseurs = [];
+    //     // Fournisseurs
+    //     $fournisseurs            = Fournisseur::all();
+    //     $devises                 = Devise::all();
+    //     $soldeGlobalFournisseurs = [];
 
-        // Initialize the array with all currency keys set to 0
-        foreach ($devises as $devise) {
-            $symbole                                        = strtolower($devise->symbole);
-            $soldeGlobalFournisseurs['entrees_' . $symbole] = 0;
-            $soldeGlobalFournisseurs['sorties_' . $symbole] = 0;
-        }
+    //     // Initialize the array with all currency keys set to 0
+    //     foreach ($devises as $devise) {
+    //         $symbole                                        = strtolower($devise->symbole);
+    //         $soldeGlobalFournisseurs['entrees_' . $symbole] = 0;
+    //         $soldeGlobalFournisseurs['sorties_' . $symbole] = 0;
+    //     }
 
-        foreach ($fournisseurs as $fournisseur) {
-            $soldeFournisseur = $this->supplierBalancePerCurrency($fournisseur->id);
+    //     foreach ($fournisseurs as $fournisseur) {
+    //         $soldeFournisseur = $this->supplierBalancePerCurrency($fournisseur->id);
 
-            foreach ($devises as $devise) {
-                $symbole = strtolower($devise->symbole);
-                $soldeGlobalFournisseurs['entrees_' . $symbole] += round($soldeFournisseur['entrees_' . $symbole], 2);
-                $soldeGlobalFournisseurs['sorties_' . $symbole] += round($soldeFournisseur['sorties_' . $symbole], 2);
+    //         foreach ($devises as $devise) {
+    //             $symbole = strtolower($devise->symbole);
+    //             $soldeGlobalFournisseurs['entrees_' . $symbole] += round($soldeFournisseur['entrees_' . $symbole], 2);
+    //             $soldeGlobalFournisseurs['sorties_' . $symbole] += round($soldeFournisseur['sorties_' . $symbole], 2);
 
-                if ($symbole == 'usd') {
-                    $total_usd += $soldeFournisseur['entrees_' . $symbole] - $soldeFournisseur['sorties_' . $symbole];
-                    $entrees_usd += $soldeFournisseur['entrees_' . $symbole];
-                    $sorties_usd += $soldeFournisseur['sorties_' . $symbole];
-                }
+    //             if ($symbole == 'usd') {
+    //                 $total_usd += $soldeFournisseur['entrees_' . $symbole] - $soldeFournisseur['sorties_' . $symbole];
+    //                 $entrees_usd += $soldeFournisseur['entrees_' . $symbole];
+    //                 $sorties_usd += $soldeFournisseur['sorties_' . $symbole];
+    //             }
 
-                if ($symbole == 'gnf') {
-                    $total_gnf += $soldeFournisseur['entrees_' . $symbole] - $soldeFournisseur['sorties_' . $symbole];
-                    $entrees_gnf += $soldeFournisseur['entrees_' . $symbole];
-                    $sorties_gnf += $soldeFournisseur['sorties_' . $symbole];
-                }
-            }
-        }
+    //             if ($symbole == 'gnf') {
+    //                 $total_gnf += $soldeFournisseur['entrees_' . $symbole] - $soldeFournisseur['sorties_' . $symbole];
+    //                 $entrees_gnf += $soldeFournisseur['entrees_' . $symbole];
+    //                 $sorties_gnf += $soldeFournisseur['sorties_' . $symbole];
+    //             }
+    //         }
+    //     }
 
-        return [
-            'solde_usd'   => round($total_usd, 2),
-            'solde_gnf'   => round($total_gnf, 2),
+    //     return [
+    //         'solde_usd'   => round($total_usd, 2),
+    //         'solde_gnf'   => round($total_gnf, 2),
 
-            // ✅ Flux global CAISSE + CLIENTS + DIVERS
-            'entrees_usd' => round($entrees_usd, 2),
-            'sorties_usd' => round($sorties_usd, 2),
-            'entrees_gnf' => round($entrees_gnf, 2),
-            'sorties_gnf' => round($sorties_gnf, 2),
+    //         // ✅ Flux global CAISSE + CLIENTS + DIVERS
+    //         'entrees_usd' => round($entrees_usd, 2),
+    //         'sorties_usd' => round($sorties_usd, 2),
+    //         'entrees_gnf' => round($entrees_gnf, 2),
+    //         'sorties_gnf' => round($sorties_gnf, 2),
 
-            'details'     => [
-                'caisse'       => [
-                    'solde_usd'   => $soldeCaisse['solde_usd'],
-                    'solde_gnf'   => $soldeCaisse['solde_gnf'],
-                    'entrees_usd' => $soldeCaisse['entrees_usd'],
-                    'sorties_usd' => $soldeCaisse['sorties_usd'],
-                    'entrees_gnf' => $soldeCaisse['entrees_gnf'],
-                    'sorties_gnf' => $soldeCaisse['sorties_gnf'],
-                ],
-                'clients'      => [
-                    'solde_usd'   => round($soldeClientsUSD, 2),
-                    'solde_gnf'   => round($soldeClientsGNF, 2),
-                    'entrees_usd' => round($entreeClientsUSD, 2),
-                    'sorties_usd' => round($sortieClientsUSD, 2),
-                    'entrees_gnf' => round($entreeClientsGNF, 2),
-                    'sorties_gnf' => round($sortieClientsGNF, 2),
-                ],
-                'divers'       => [
-                    'solde_usd'   => round($soldeDiversUSD, 2),
-                    'solde_gnf'   => round($soldeDiversGNF, 2),
-                    'entrees_usd' => round($entreeDiversUSD, 2),
-                    'sorties_usd' => round($sortieDiversUSD, 2),
-                    'entrees_gnf' => round($entreeDiversGNF, 2),
-                    'sorties_gnf' => round($sortieDiversGNF, 2),
-                ],
-                'fournisseurs' => $soldeGlobalFournisseurs,
-            ],
-        ];
-    }
+    //         'details'     => [
+    //             'caisse'       => [
+    //                 'solde_usd'   => $soldeCaisse['solde_usd'],
+    //                 'solde_gnf'   => $soldeCaisse['solde_gnf'],
+    //                 'entrees_usd' => $soldeCaisse['entrees_usd'],
+    //                 'sorties_usd' => $soldeCaisse['sorties_usd'],
+    //                 'entrees_gnf' => $soldeCaisse['entrees_gnf'],
+    //                 'sorties_gnf' => $soldeCaisse['sorties_gnf'],
+    //             ],
+    //             'clients'      => [
+    //                 'solde_usd'   => round($soldeClientsUSD, 2),
+    //                 'solde_gnf'   => round($soldeClientsGNF, 2),
+    //                 'entrees_usd' => round($entreeClientsUSD, 2),
+    //                 'sorties_usd' => round($sortieClientsUSD, 2),
+    //                 'entrees_gnf' => round($entreeClientsGNF, 2),
+    //                 'sorties_gnf' => round($sortieClientsGNF, 2),
+    //             ],
+    //             'divers'       => [
+    //                 'solde_usd'   => round($soldeDiversUSD, 2),
+    //                 'solde_gnf'   => round($soldeDiversGNF, 2),
+    //                 'entrees_usd' => round($entreeDiversUSD, 2),
+    //                 'sorties_usd' => round($sortieDiversUSD, 2),
+    //                 'entrees_gnf' => round($entreeDiversGNF, 2),
+    //                 'sorties_gnf' => round($sortieDiversGNF, 2),
+    //             ],
+    //             'fournisseurs' => $soldeGlobalFournisseurs,
+    //         ],
+    //     ];
+    // }
 
 }
