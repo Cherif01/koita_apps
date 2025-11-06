@@ -240,68 +240,143 @@ class DiversService
         });
     }
 
-   
+    // public function getReleveDivers(int $id_divers): array
+    // {
+    //     // 🔹 Récupérer toutes les devises actives
+    //     $devises = Devise::pluck('symbole')->map(fn($s) => strtolower($s));
 
+    //     // 🔹 1. Récupération des opérations
+    //     $operations = OperationDivers::with(['typeOperation', 'devise'])
+    //         ->where('id_divers', $id_divers)
+    //         ->orderBy('date_operation')
+    //         ->orderBy('created_at')
+    //         ->get()
+    //         ->map(function ($op) {
+    //             $nature = $op->typeOperation?->nature; // 1 = entrée, 0 = sortie
+
+    //             return [
+    //                 'date'        => $op->date_operation
+    //                     ? (is_string($op->date_operation)
+    //                         ? $op->date_operation
+    //                         : $op->date_operation->format('Y-m-d H:i:s'))
+    //                     : $op->created_at?->format('Y-m-d H:i:s'),
+
+    //                 'reference'   => $op->reference ?? '',
+    //                 'libelle'     => $op->typeOperation?->libelle ?? 'Opération Divers',
+    //                 'devise'      => strtolower($op->devise?->symbole ?? ''),
+    //                 'commentaire' => $op->commentaire ?? '',
+    //                 'debit'       => $nature == 0 ? (float) $op->montant : 0,
+    //                 'credit'      => $nature == 1 ? (float) $op->montant : 0,
+    //             ];
+    //         });
+
+    //     // 🔹 2. Initialisation dynamique des soldes
+    //     $soldes  = [];
+    //     $releves = [];
+
+    //     foreach ($devises as $symbole) {
+    //         $soldes[$symbole]  = 0;
+    //         $releves[$symbole] = [];
+    //     }
+
+    //     // 🔹 3. Calcul des soldes progressifs
+    //     foreach ($operations as $op) {
+    //         $symbole = $op['devise'];
+
+    //         if (! isset($soldes[$symbole])) {
+    //             $soldes[$symbole]  = 0;
+    //             $releves[$symbole] = [];
+    //         }
+
+    //         $soldes[$symbole] += $op['credit'] - $op['debit'];
+    //         $op['solde_apres'] = round($soldes[$symbole], 2);
+
+    //         $releves[$symbole][] = $op;
+    //     }
+
+    //     // 🔹 4. Inversion des listes (du plus récent au plus ancien)
+    //     foreach ($releves as $symbole => &$list) {
+    //         $list = array_reverse($list);
+    //     }
+
+    //     return $releves;
+    // }
     public function getReleveDivers(int $id_divers): array
     {
-        // 🔹 Récupérer toutes les devises actives
-        $devises = Devise::pluck('symbole')->map(fn($s) => strtolower($s));
+        // 🔹 Charger le divers avec son compte, sa banque et sa devise
+        $divers = Divers::with(['compte.banque', 'compte.devise'])->find($id_divers);
 
-        // 🔹 1. Récupération des opérations
+        if (! $divers || ! $divers->compte) {
+            return [
+                'status'        => 404,
+                'message'       => "Divers introuvable ou sans compte associé.",
+                'releve_divers' => [],
+            ];
+        }
+
+        $compte          = $divers->compte;
+        $banque          = $compte->banque?->libelle ?? null;
+        $numero_compte   = $compte->numero_compte ?? null;
+        $id_deviseCompte = $compte->devise_id;
+        $symbole         = strtolower($compte->devise?->symbole ?? 'gnf');
+
+        // 🔹 Récupération des opérations du divers (même devise)
         $operations = OperationDivers::with(['typeOperation', 'devise'])
             ->where('id_divers', $id_divers)
+            ->where('id_devise', $id_deviseCompte)
             ->orderBy('date_operation')
             ->orderBy('created_at')
             ->get()
-            ->map(function ($op) {
+            ->map(function ($op) use ($banque, $numero_compte) {
                 $nature = $op->typeOperation?->nature; // 1 = entrée, 0 = sortie
 
                 return [
-                    'date'        => $op->date_operation
-                        ? (is_string($op->date_operation)
-                            ? $op->date_operation
-                            : $op->date_operation->format('Y-m-d H:i:s'))
-                        : $op->created_at?->format('Y-m-d H:i:s'),
-
-                    'reference'   => $op->reference ?? '',
-                    'libelle'     => $op->typeOperation?->libelle ?? 'Opération Divers',
-                    'devise'      => strtolower($op->devise?->symbole ?? ''),
-                    'commentaire' => $op->commentaire ?? '',
-                    'debit'       => $nature == 0 ? (float) $op->montant : 0,
-                    'credit'      => $nature == 1 ? (float) $op->montant : 0,
+                    'date'           => $op->created_at?->format('Y-m-d H:i:s'),
+                    'date_operation' => $op->date_operation,
+                    'reference'      => $op->reference,
+                    'type'           => 'operation_divers',
+                    'libelle'        => $op->typeOperation?->libelle ?? 'Opération Divers',
+                    'banque'         => $banque,
+                    'numero_compte'  => $numero_compte,
+                    'devise'         => strtolower($op->devise?->symbole ?? ''),
+                    'debit'          => $nature == 0 ? (float) $op->montant : 0,
+                    'credit'         => $nature == 1 ? (float) $op->montant : 0,
                 ];
             });
 
-        // 🔹 2. Initialisation dynamique des soldes
-        $soldes  = [];
-        $releves = [];
+        // 🔹 Initialisation des soldes par devise
+        $soldes    = [];
+        $resultats = [];
 
-        foreach ($devises as $symbole) {
-            $soldes[$symbole]  = 0;
-            $releves[$symbole] = [];
-        }
+        $soldes[$symbole]    = 0;
+        $resultats[$symbole] = [];
 
-        // 🔹 3. Calcul des soldes progressifs
-        foreach ($operations as $op) {
-            $symbole = $op['devise'];
+        // 🔹 Calcul du solde progressif
+        foreach ($operations as $ligne) {
+            $symb = $ligne['devise'] ?: $symbole;
 
-            if (! isset($soldes[$symbole])) {
-                $soldes[$symbole]  = 0;
-                $releves[$symbole] = [];
+            if (! isset($soldes[$symb])) {
+                $soldes[$symb]    = 0;
+                $resultats[$symb] = [];
             }
 
-            $soldes[$symbole] += $op['credit'] - $op['debit'];
-            $op['solde_apres'] = round($soldes[$symbole], 2);
+            $soldes[$symb] += $ligne['credit'] - $ligne['debit'];
+            $ligne['solde_apres'] = round($soldes[$symb], 2);
 
-            $releves[$symbole][] = $op;
+            $resultats[$symb][] = $ligne;
         }
 
-        // 🔹 4. Inversion des listes (du plus récent au plus ancien)
-        foreach ($releves as $symbole => &$list) {
+        // 🔹 Inverser les listes (plus récent en premier)
+        foreach ($resultats as $symb => &$list) {
             $list = array_reverse($list);
         }
 
-        return $releves;
+        // 🔹 Structure finale identique à getReleveClient()
+        return [
+            'status'        => 200,
+            'message'       => 'Relevé du divers récupéré avec succès.',
+            'releve_divers' => $resultats,
+        ];
     }
 
 }
