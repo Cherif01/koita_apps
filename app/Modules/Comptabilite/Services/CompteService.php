@@ -23,6 +23,7 @@ class CompteService
         }
 
         $id_deviseCompte = $compte->devise_id;
+        $soldeInitial    = $compte->solde_initial ?? 0;
 
         // 🔹 Fonction pour récupérer le total des montants dans la devise du compte
         $getTotal = function ($model, int $nature) use ($id_compte, $id_deviseCompte) {
@@ -55,7 +56,7 @@ class CompteService
         $sortiesF = $getTotalFournisseur(0);
 
         // ✅ Solde final dans la devise du compte
-        $solde = ($entrees + $entreesF) - ($sorties + $sortiesF);
+        $solde = $soldeInitial + ($entrees + $entreesF) - ($sorties + $sortiesF);
 
         return round($solde, 2);
     }
