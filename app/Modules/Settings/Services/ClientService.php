@@ -397,23 +397,107 @@ class ClientService
     //     ];
     // }
 
+    // public function getReleveClient(int $id_client): array
+    // {
+    //     // 🔹 Récupérer toutes les devises actives
+    //     $devises = Devise::pluck('symbole')->map(fn($s) => strtolower($s));
+
+    //     // 🔹 1. Récupérer les opérations du client
+    //     $operationsClient = OperationClient::with(['typeOperation', 'devise'])
+    //         ->where('id_client', $id_client)
+    //         ->get()
+    //         ->map(function ($op) {
+    //             $nature = $op->typeOperation?->nature; // 1 = entrée, 0 = sortie
+    //             return [
+    //                 'date'           => $op->created_at?->format('Y-m-d H:i:s'),
+    //                 'date_operation' => $op->date_operation,
+    //                 'reference'      => $op->reference,
+    //                 'type'           => 'operation_client',
+    //                 'libelle'        => $op->typeOperation?->libelle ?? 'Opération client',
+    //                 'devise'         => strtolower($op->devise?->symbole ?? ''),
+    //                 'debit'          => $nature == 0 ? (float) $op->montant : 0,
+    //                 'credit'         => $nature == 1 ? (float) $op->montant : 0,
+    //             ];
+    //         });
+
+    //     // 🔹 2. Récupérer les fixings du client
+    //     $fixings = FixingClient::with(['devise'])
+    //         ->where('id_client', $id_client)
+    //         ->get()
+    //         ->map(function ($fix) {
+    //             $calcul    = app(FixingClientService::class)->calculerFacture($fix->id);
+    //             $purete    = $calcul['purete_totale'] ?? 0;
+    //             $bourse    = $calcul['bourse'] ?? 0;
+    //             $discompte = $calcul['discompte'] ?? 0;
+
+    //             return [
+    //                 'date'           => $fix->created_at?->format('Y-m-d H:i:s'),
+    //                 'date_operation' => null,
+    //                 'reference'      => $fix->reference ?? null,
+    //                 'type'           => 'fixing',
+    //                 'libelle'        => "Facturation du {$purete} g | Bourse : {$bourse} | Discompte : {$discompte}",
+    //                 'devise' => strtolower($fix->devise?->symbole ?? ''),
+    //                 'debit'  => (float) ($calcul['total_facture'] ?? 0),
+    //                 'credit' => 0,
+    //             ];
+    //         });
+
+    //     // 🔹 3. Fusionner toutes les opérations
+    //     $data = $operationsClient->concat($fixings)
+    //         ->sortBy('date')
+    //         ->values()
+    //         ->toArray();
+
+    //     // 🔹 4. Initialiser les soldes par devise
+    //     $soldes    = [];
+    //     $resultats = [];
+
+    //     foreach ($devises as $symbole) {
+    //         $soldes[$symbole]    = 0;
+    //         $resultats[$symbole] = [];
+    //     }
+
+    //     // 🔹 5. Calcul des soldes progressifs dynamiques
+    //     foreach ($data as $ligne) {
+    //         $symbole = $ligne['devise'];
+
+    //         if (! isset($soldes[$symbole])) {
+    //             $soldes[$symbole]    = 0;
+    //             $resultats[$symbole] = [];
+    //         }
+
+    //         $soldes[$symbole] += $ligne['credit'] - $ligne['debit'];
+    //         $ligne['solde_apres']  = round($soldes[$symbole], 2);
+    //         $resultats[$symbole][] = $ligne;
+    //     }
+
+    //     // 🔹 6. Inverser les listes (du plus récent au plus ancien)
+    //     foreach ($resultats as $symbole => &$list) {
+    //         $list = array_reverse($list);
+    //     }
+
+    //     return $resultats;
+    // }
     public function getReleveClient(int $id_client): array
     {
         // 🔹 Récupérer toutes les devises actives
         $devises = Devise::pluck('symbole')->map(fn($s) => strtolower($s));
 
-        // 🔹 1. Récupérer les opérations du client
-        $operationsClient = OperationClient::with(['typeOperation', 'devise'])
+        // 🔹 1. Récupérer les opérations du client avec banque
+        $operationsClient = OperationClient::with(['typeOperation', 'devise', 'compte.banque'])
             ->where('id_client', $id_client)
             ->get()
             ->map(function ($op) {
                 $nature = $op->typeOperation?->nature; // 1 = entrée, 0 = sortie
+
                 return [
                     'date'           => $op->created_at?->format('Y-m-d H:i:s'),
                     'date_operation' => $op->date_operation,
                     'reference'      => $op->reference,
                     'type'           => 'operation_client',
                     'libelle'        => $op->typeOperation?->libelle ?? 'Opération client',
+                    'banque'         => $op->compte?->banque?->libelle ?? null, // ✅ libellé banque
+                    'numero_compte'  => $op->compte?->numero_compte ?? null,    // ✅ numéro du compte (si existe)
                     'devise'         => strtolower($op->devise?->symbole ?? ''),
                     'debit'          => $nature == 0 ? (float) $op->montant : 0,
                     'credit'         => $nature == 1 ? (float) $op->montant : 0,
@@ -436,9 +520,11 @@ class ClientService
                     'reference'      => $fix->reference ?? null,
                     'type'           => 'fixing',
                     'libelle'        => "Facturation du {$purete} g | Bourse : {$bourse} | Discompte : {$discompte}",
-                    'devise' => strtolower($fix->devise?->symbole ?? ''),
-                    'debit'  => (float) ($calcul['total_facture'] ?? 0),
-                    'credit' => 0,
+                    'banque'        => null, // aucun lien bancaire pour un fixing
+                    'numero_compte' => null,
+                    'devise'        => strtolower($fix->devise?->symbole ?? ''),
+                    'debit'         => (float) ($calcul['total_facture'] ?? 0),
+                    'credit'        => 0,
                 ];
             });
 
