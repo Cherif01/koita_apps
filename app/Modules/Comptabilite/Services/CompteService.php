@@ -72,21 +72,20 @@ class CompteService
             return [
                 'status'  => false,
                 'message' => "Compte introuvable.",
+                'solde'   => 0,
             ];
         }
 
-        // 🔸 Vérifie si la devise de l’opération correspond à celle du compte
         if ($compte->devise_id !== $id_deviseOperation) {
             return [
                 'status'  => false,
-                'message' => "Opération refusée : la devise de l’opération ({$id_deviseOperation}) ne correspond pas à celle du compte ({$compte->devise->symbole}).",
+                'message' => "Opération refusée : la devise de l’opération ne correspond pas à celle du compte.",
+                'solde'   => self::calculerSolde($id_compte), // ✅ ajoute toujours la clé
             ];
         }
 
-        // 🔸 Calcule le solde actuel du compte
         $solde = self::calculerSolde($id_compte);
 
-        // 🔸 Vérifie si le solde est suffisant
         if ($solde < $montant) {
             return [
                 'status'  => false,
