@@ -131,11 +131,78 @@ class DiversService
         }
     }
 
+    // public function calculerSoldeDivers(int $id_divers, int $cacheMinutes = 5): array
+    // {
+    //     return Cache::remember("solde_divers_{$id_divers}", now()->addMinutes($cacheMinutes), function () use ($id_divers) {
+
+    //         // 🔹 Récupérer toutes les devises actives
+    //         $devises = Devise::select('id', 'symbole')->get();
+
+    //         $soldes = [];
+    //         $flux   = [];
+
+    //         $operations = OperationDivers::with(['typeOperation', 'devise'])
+    //             ->where('id_divers', $id_divers)
+    //             ->get();
+
+    //         // 🔸 Initialisation dynamique pour chaque devise
+    //         foreach ($devises as $devise) {
+    //             $symbole = strtolower($devise->symbole);
+
+    //             $soldes[$symbole] = 0;
+    //             $flux[$symbole]   = [
+    //                 'entrees' => 0,
+    //                 'sorties' => 0,
+    //             ];
+    //         }
+
+    //         // 🔹 Parcours de toutes les opérations
+    //         foreach ($operations as $op) {
+    //             $devise  = strtolower($op->devise?->symbole ?? 'gnf');
+    //             $nature  = $op->typeOperation?->nature ?? 1; // 1 = entrée, 0 = sortie
+    //             $montant = (float) $op->montant;
+
+    //             // 🔸 Si la devise n’existe pas encore (cas de devise ajoutée en cours)
+    //             if (! isset($soldes[$devise])) {
+    //                 $soldes[$devise] = 0;
+    //                 $flux[$devise]   = [
+    //                     'entrees' => 0,
+    //                     'sorties' => 0,
+    //                 ];
+    //             }
+
+    //             // 🔸 Traitement selon la nature
+    //             if ($nature == 1) {
+    //                 $flux[$devise]['entrees'] += $montant;
+    //                 $soldes[$devise] += $montant;
+    //             } else {
+    //                 $flux[$devise]['sorties'] += $montant;
+    //                 $soldes[$devise] -= $montant;
+    //             }
+    //         }
+
+    //         // 🔹 Arrondir toutes les valeurs
+    //         foreach ($soldes as $symbole => &$val) {
+    //             $val = round($val, 2);
+    //         }
+
+    //         foreach ($flux as $symbole => &$item) {
+    //             $item['entrees'] = round($item['entrees'], 2);
+    //             $item['sorties'] = round($item['sorties'], 2);
+    //         }
+
+    //         // 🔹 Structure finale propre
+    //         return [
+    //             'soldes' => $soldes,
+    //             'flux'   => $flux,
+    //         ];
+    //     });
+    // }
+
     public function calculerSoldeDivers(int $id_divers, int $cacheMinutes = 5): array
     {
         return Cache::remember("solde_divers_{$id_divers}", now()->addMinutes($cacheMinutes), function () use ($id_divers) {
 
-            // 🔹 Récupérer toutes les devises actives
             $devises = Devise::select('id', 'symbole')->get();
 
             $soldes = [];
@@ -162,7 +229,6 @@ class DiversService
                 $nature  = $op->typeOperation?->nature ?? 1; // 1 = entrée, 0 = sortie
                 $montant = (float) $op->montant;
 
-                // 🔸 Si la devise n’existe pas encore (cas de devise ajoutée en cours)
                 if (! isset($soldes[$devise])) {
                     $soldes[$devise] = 0;
                     $flux[$devise]   = [
@@ -171,7 +237,6 @@ class DiversService
                     ];
                 }
 
-                // 🔸 Traitement selon la nature
                 if ($nature == 1) {
                     $flux[$devise]['entrees'] += $montant;
                     $soldes[$devise] += $montant;
@@ -181,20 +246,28 @@ class DiversService
                 }
             }
 
-            // 🔹 Arrondir toutes les valeurs
-            foreach ($soldes as $symbole => &$val) {
-                $val = round($val, 2);
+            // 🔹 Conversion en tableaux uniformes
+            $soldesArray = [];
+            $fluxArray   = [];
+
+            foreach ($soldes as $symbole => $val) {
+                $soldesArray[] = [
+                    'devise'  => $symbole,
+                    'montant' => round($val, 2),
+                ];
             }
 
-            foreach ($flux as $symbole => &$item) {
-                $item['entrees'] = round($item['entrees'], 2);
-                $item['sorties'] = round($item['sorties'], 2);
+            foreach ($flux as $symbole => $item) {
+                $fluxArray[] = [
+                    'devise'  => $symbole,
+                    'entrees' => round($item['entrees'], 2),
+                    'sorties' => round($item['sorties'], 2),
+                ];
             }
 
-            // 🔹 Structure finale propre
             return [
-                'soldes' => $soldes,
-                'flux'   => $flux,
+                'soldes' => $soldesArray,
+                'flux'   => $fluxArray,
             ];
         });
     }
