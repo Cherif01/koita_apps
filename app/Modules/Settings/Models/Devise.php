@@ -19,6 +19,8 @@ class Devise extends Model
     protected $table = 'devises';
 
     protected $fillable = [
+        'libelle',
+        'symbole',
         'created_by',
         'modify_by',
     ];
@@ -62,8 +64,5 @@ class Devise extends Model
         return $this->hasMany(FournisseurOperation::class)->whereNull('fournisseur_operations.deleted_at');
     }
 
-    public function deviseComptes(): HasMany
-    {
-        return $this->hasMany(CompteDevise::class);
-    }
+   
 }
