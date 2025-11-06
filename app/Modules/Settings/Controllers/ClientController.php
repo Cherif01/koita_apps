@@ -78,10 +78,15 @@ class ClientController extends Controller
     }
 
     public function soldeGlobal()
-    {
-        $resultat = $this->clientService->calculerSoldeGlobalClients();
+{
+    $resultat = $this->clientService->calculerSoldeGlobalClients();
 
-        return response()->json($resultat, $resultat['status']);
-    }
+    return response()->json([
+        'status'  => 200,
+        'message' => 'Solde global de tous les clients récupéré avec succès.',
+        'data'    => $resultat,
+    ], 200);
+}
+
 
 }

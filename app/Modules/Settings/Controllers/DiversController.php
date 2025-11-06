@@ -42,7 +42,11 @@ class DiversController extends Controller
     {
         $resultat = $this->diversService->calculerSoldeGlobalDivers();
 
-        return response()->json($resultat, $resultat['status']);
+        return response()->json([
+            'status'  => 200,
+            'message' => 'Solde global de tous les comptes divers récupéré avec succès.',
+            'data'    => $resultat,
+        ], 200);
     }
 
 }
