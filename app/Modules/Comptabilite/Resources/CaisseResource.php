@@ -18,7 +18,8 @@ class CaisseResource extends JsonResource
             ? Carbon::parse($this->date_operation)->format('Y-m-d')
             : $this->created_at?->format('Y-m-d');
 
-            $soldeGlobal = app(CaisseService::class)->calculerSoldeGlobal();
+        // ✅ Appel du service pour récupérer le relevé complet de la caisse
+        $releveCaisse = app(CaisseService::class)->getReleveCaisse($this->id);
 
         return array_filter([
             'id'               => $this->id,
@@ -26,12 +27,15 @@ class CaisseResource extends JsonResource
             'date_operation'   => $dateOperation,
             'montant'          => (float) $this->montant,
             'commentaire'      => $this->commentaire,
-            'taux_jour'      => $this->taux_jour,
+            'taux_jour'        => $this->taux_jour,
 
             // 🔹 Relations principales
             'type_operation'   => new TypeOperationResource($this->whenLoaded('typeOperation')),
             'devise'           => new DeviseResource($this->whenLoaded('devise')),
-            //'soldeGlobal'=> $soldeGlobal,
+
+            // 🔹 Relevé complet (groupé par devise)
+            'releve_caisse'    => $releveCaisse['releve_caisse'] ?? [],
+
             // 🔹 Audit
             'created_by'       => $this->createur?->name,
             'updated_by'       => $this->modificateur?->name,

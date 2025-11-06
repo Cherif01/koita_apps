@@ -38,4 +38,6 @@ class CaisseController extends Controller
     {
         return $this->service->delete($id);
     }
+
+   
 }

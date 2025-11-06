@@ -133,7 +133,83 @@ class CaisseService
         }
     }
 
-   
+    public function getReleveCaisse(int $id_caisse): array
+    {
+        // 🔹 Charger la caisse avec son compte, sa banque et sa devise
+        $caisse = Caisse::with(['compte.banque', 'compte.devise'])->find($id_caisse);
+
+        if (! $caisse || ! $caisse->compte) {
+            return [
+                'status'        => 404,
+                'message'       => "Caisse introuvable ou sans compte associé.",
+                'releve_caisse' => [],
+            ];
+        }
+
+        $compte          = $caisse->compte;
+        $banque          = $compte->banque?->libelle ?? null;
+        $numero_compte   = $compte->numero_compte ?? null;
+        $id_deviseCompte = $compte->devise_id;
+        $symbole         = strtolower($compte->devise?->symbole ?? 'gnf');
+
+        // 🔹 Récupération des opérations liées à la caisse
+        $operations = Caisse::with(['typeOperation', 'devise'])
+            ->where('id_compte', $compte->id)
+            ->where('id_devise', $id_deviseCompte)
+            ->orderBy('date_operation')
+            ->orderBy('created_at')
+            ->get()
+            ->map(function ($op) use ($banque, $numero_compte) {
+                $nature = $op->typeOperation?->nature; // 1 = entrée, 0 = sortie
+
+                return [
+                    'date'           => $op->created_at?->format('Y-m-d H:i:s'),
+                    'date_operation' => $op->date_operation,
+                    'reference'      => $op->reference,
+                    'type'           => 'operation_caisse',
+                    'libelle'        => $op->typeOperation?->libelle ?? 'Opération Caisse',
+                    'banque'         => $banque,
+                    'numero_compte'  => $numero_compte,
+                    'devise'         => strtolower($op->devise?->symbole ?? ''),
+                    'debit'          => $nature == 0 ? (float) $op->montant : 0,
+                    'credit'         => $nature == 1 ? (float) $op->montant : 0,
+                ];
+            });
+
+        // 🔹 Initialisation du solde par devise
+        $soldes    = [];
+        $resultats = [];
+
+        $soldes[$symbole]    = 0;
+        $resultats[$symbole] = [];
+
+        // 🔹 Calcul du solde progressif
+        foreach ($operations as $ligne) {
+            $symb = $ligne['devise'] ?: $symbole;
+
+            if (! isset($soldes[$symb])) {
+                $soldes[$symb]    = 0;
+                $resultats[$symb] = [];
+            }
+
+            $soldes[$symb] += $ligne['credit'] - $ligne['debit'];
+            $ligne['solde_apres'] = round($soldes[$symb], 2);
+
+            $resultats[$symb][] = $ligne;
+        }
+
+        // 🔹 Inverser les listes (plus récentes d’abord)
+        foreach ($resultats as $symb => &$list) {
+            $list = array_reverse($list);
+        }
+
+        // ✅ Retour structuré
+        return [
+            'status'        => 200,
+            'message'       => 'Relevé de la caisse récupéré avec succès.',
+            'releve_caisse' => $resultats,
+        ];
+    }
 
     public function calculerSoldeCaisse(): array
     {
