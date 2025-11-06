@@ -352,56 +352,67 @@ class DiversService
 
     public function calculerSoldeGlobalDivers(): array
     {
-        // 🔹 Initialisation globale
-        $totaux = [
-            'soldes' => [],
-            'flux'   => [],
-        ];
+        $totauxSoldes = [];
+        $totauxFlux   = [];
 
-        // 🔹 Parcours de tous les divers
+        // 🔹 Parcours de tous les comptes divers
         foreach (Divers::all(['id']) as $divers) {
             $resultat = app(DiversService::class)->calculerSoldeDivers($divers->id);
 
             $soldes = $resultat['soldes'] ?? [];
             $flux   = $resultat['flux'] ?? [];
 
-            // 🔹 Agrégation dynamique des soldes
-            foreach ($soldes as $devise => $solde) {
-                if (! isset($totaux['soldes'][$devise])) {
-                    $totaux['soldes'][$devise] = 0;
+            // 🔹 Agrégation des soldes (format : [{devise, montant}])
+            foreach ($soldes as $item) {
+                $devise  = $item['devise'];
+                $montant = $item['montant'];
+
+                if (! isset($totauxSoldes[$devise])) {
+                    $totauxSoldes[$devise] = 0;
                 }
-                $totaux['soldes'][$devise] += $solde;
+                $totauxSoldes[$devise] += $montant;
             }
 
-            // 🔹 Agrégation dynamique des flux
-            foreach ($flux as $devise => $data) {
-                if (! isset($totaux['flux'][$devise])) {
-                    $totaux['flux'][$devise] = [
+            // 🔹 Agrégation des flux (format : [{devise, entrees, sorties}])
+            foreach ($flux as $item) {
+                $devise  = $item['devise'];
+                $entrees = $item['entrees'];
+                $sorties = $item['sorties'];
+
+                if (! isset($totauxFlux[$devise])) {
+                    $totauxFlux[$devise] = [
                         'entrees' => 0,
                         'sorties' => 0,
                     ];
                 }
 
-                $totaux['flux'][$devise]['entrees'] += $data['entrees'] ?? 0;
-                $totaux['flux'][$devise]['sorties'] += $data['sorties'] ?? 0;
+                $totauxFlux[$devise]['entrees'] += $entrees;
+                $totauxFlux[$devise]['sorties'] += $sorties;
             }
         }
 
-        // 🔹 Arrondir proprement toutes les valeurs
-        foreach ($totaux['soldes'] as &$solde) {
-            $solde = round($solde, 2);
+        // 🔹 Conversion finale en tableaux uniformes
+        $soldesArray = [];
+        foreach ($totauxSoldes as $devise => $montant) {
+            $soldesArray[] = [
+                'devise'  => $devise,
+                'montant' => round($montant, 2),
+            ];
         }
 
-        foreach ($totaux['flux'] as &$fluxDevise) {
-            $fluxDevise['entrees'] = round($fluxDevise['entrees'], 2);
-            $fluxDevise['sorties'] = round($fluxDevise['sorties'], 2);
+        $fluxArray = [];
+        foreach ($totauxFlux as $devise => $data) {
+            $fluxArray[] = [
+                'devise'  => $devise,
+                'entrees' => round($data['entrees'], 2),
+                'sorties' => round($data['sorties'], 2),
+            ];
         }
 
-        // ✅ Résultat final
+        // ✅ Résultat final unifié
         return [
-            'status'  => 200,
-            'message' => 'Solde global de tous les divers calculé avec succès.',
-            'data'    => $totaux,
+            'soldes' => $soldesArray,
+            'flux'   => $fluxArray,
         ];
     }
 
