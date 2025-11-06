@@ -77,4 +77,11 @@ class ClientController extends Controller
         return $this->clientService->getReleveClientPeriode1($id_client, $date_debut, $date_fin);
     }
 
+    public function soldeGlobal()
+    {
+        $resultat = $this->clientService->calculerSoldeGlobalClients();
+
+        return response()->json($resultat, $resultat['status']);
+    }
+
 }

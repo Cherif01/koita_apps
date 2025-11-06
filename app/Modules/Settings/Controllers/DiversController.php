@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Modules\Settings\Controllers;
 
 use App\Http\Controllers\Controller;
@@ -39,4 +38,11 @@ class DiversController extends Controller
     {
         return $this->diversService->getOne($id);
     }
+    public function soldeGlobal()
+    {
+        $resultat = $this->diversService->calculerSoldeGlobalDivers();
+
+        return response()->json($resultat, $resultat['status']);
+    }
+
 }

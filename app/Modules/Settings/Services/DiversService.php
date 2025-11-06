@@ -131,47 +131,6 @@ class DiversService
         }
     }
 
-    // public function calculerSoldeDivers(int $id_divers, int $cacheMinutes = 5): array
-    // {
-    //     return Cache::remember("solde_divers_{$id_divers}", now()->addMinutes($cacheMinutes), function () use ($id_divers) {
-
-    //         $operations = OperationDivers::with(['typeOperation', 'devise'])
-    //             ->where('id_divers', $id_divers)
-    //             ->get();
-
-    //         $soldes = [];
-
-    //         foreach ($operations as $op) {
-    //             $devise  = strtoupper($op->devise?->symbole ?? 'GNF');
-    //             $nature  = $op->typeOperation?->nature ?? 1;
-    //             $montant = (float) $op->montant;
-    //             $taux    = (float) ($op->taux_jour ?? 1);
-
-    //             // ✅ Si devise est GNF → pas de conversion, on ajoute normalement
-    //             if ($devise === 'GNF') {
-    //                 $soldes['gnf'] = ($soldes['gnf'] ?? 0)
-    //                      + ($nature == 1 ? $montant : -$montant);
-    //                 continue;
-    //             }
-
-    //             // ✅ Si taux_jour ≠ 1 → conversion en GNF uniquement ✅
-    //             if ($taux != 1) {
-    //                 $montantConverti = $montant * $taux;
-    //                 $soldes['gnf']   = ($soldes['gnf'] ?? 0)
-    //                      + ($nature == 1 ? $montantConverti : -$montantConverti);
-    //             } else {
-    //                 // ✅ Sinon, solde dans la devise d'origine (USD ou autre)
-    //                 $soldes[strtolower($devise)] = ($soldes[strtolower($devise)] ?? 0)
-    //                      + ($nature == 1 ? $montant : -$montant);
-    //             }
-    //         }
-
-    //         return collect($soldes)
-    //             ->map(fn($s) => round($s, 2))
-    //             ->toArray();
-    //     });
-    // }
-
     public function calculerSoldeDivers(int $id_divers, int $cacheMinutes = 5): array
     {
         return Cache::remember("solde_divers_{$id_divers}", now()->addMinutes($cacheMinutes), function () use ($id_divers) {
@@ -240,67 +199,6 @@ class DiversService
         });
     }
 
-    // public function getReleveDivers(int $id_divers): array
-    // {
-    //     // 🔹 Récupérer toutes les devises actives
-    //     $devises = Devise::pluck('symbole')->map(fn($s) => strtolower($s));
-
-    //     // 🔹 1. Récupération des opérations
-    //     $operations = OperationDivers::with(['typeOperation', 'devise'])
-    //         ->where('id_divers', $id_divers)
-    //         ->orderBy('date_operation')
-    //         ->orderBy('created_at')
-    //         ->get()
-    //         ->map(function ($op) {
-    //             $nature = $op->typeOperation?->nature; // 1 = entrée, 0 = sortie
-
-    //             return [
-    //                 'date'        => $op->date_operation
-    //                     ? (is_string($op->date_operation)
-    //                         ? $op->date_operation
-    //                         : $op->date_operation->format('Y-m-d H:i:s'))
-    //                     : $op->created_at?->format('Y-m-d H:i:s'),
-
-    //                 'reference'   => $op->reference ?? '',
-    //                 'libelle'     => $op->typeOperation?->libelle ?? 'Opération Divers',
-    //                 'devise'      => strtolower($op->devise?->symbole ?? ''),
-    //                 'commentaire' => $op->commentaire ?? '',
-    //                 'debit'       => $nature == 0 ? (float) $op->montant : 0,
-    //                 'credit'      => $nature == 1 ? (float) $op->montant : 0,
-    //             ];
-    //         });
-
-    //     // 🔹 2. Initialisation dynamique des soldes
-    //     $soldes  = [];
-    //     $releves = [];
-
-    //     foreach ($devises as $symbole) {
-    //         $soldes[$symbole]  = 0;
-    //         $releves[$symbole] = [];
-    //     }
-
-    //     // 🔹 3. Calcul des soldes progressifs
-    //     foreach ($operations as $op) {
-    //         $symbole = $op['devise'];
-
-    //         if (! isset($soldes[$symbole])) {
-    //             $soldes[$symbole]  = 0;
-    //             $releves[$symbole] = [];
-    //         }
-
-    //         $soldes[$symbole] += $op['credit'] - $op['debit'];
-    //         $op['solde_apres'] = round($soldes[$symbole], 2);
-
-    //         $releves[$symbole][] = $op;
-    //     }
-
-    //     // 🔹 4. Inversion des listes (du plus récent au plus ancien)
-    //     foreach ($releves as $symbole => &$list) {
-    //         $list = array_reverse($list);
-    //     }
-
-    //     return $releves;
-    // }
     public function getReleveDivers(int $id_divers): array
     {
         // 🔹 Charger le divers avec son compte, sa banque et sa devise
@@ -376,6 +274,61 @@ class DiversService
             'status'        => 200,
             'message'       => 'Relevé du divers récupéré avec succès.',
             'releve_divers' => $resultats,
+        ];
+    }
+
+    public function calculerSoldeGlobalDivers(): array
+    {
+        // 🔹 Initialisation globale
+        $totaux = [
+            'soldes' => [],
+            'flux'   => [],
+        ];
+
+        // 🔹 Parcours de tous les divers
+        foreach (Divers::all(['id']) as $divers) {
+            $resultat = app(DiversService::class)->calculerSoldeDivers($divers->id);
+
+            $soldes = $resultat['soldes'] ?? [];
+            $flux   = $resultat['flux'] ?? [];
+
+            // 🔹 Agrégation dynamique des soldes
+            foreach ($soldes as $devise => $solde) {
+                if (! isset($totaux['soldes'][$devise])) {
+                    $totaux['soldes'][$devise] = 0;
+                }
+                $totaux['soldes'][$devise] += $solde;
+            }
+
+            // 🔹 Agrégation dynamique des flux
+            foreach ($flux as $devise => $data) {
+                if (! isset($totaux['flux'][$devise])) {
+                    $totaux['flux'][$devise] = [
+                        'entrees' => 0,
+                        'sorties' => 0,
+                    ];
+                }
+
+                $totaux['flux'][$devise]['entrees'] += $data['entrees'] ?? 0;
+                $totaux['flux'][$devise]['sorties'] += $data['sorties'] ?? 0;
+            }
+        }
+
+        // 🔹 Arrondir proprement toutes les valeurs
+        foreach ($totaux['soldes'] as &$solde) {
+            $solde = round($solde, 2);
+        }
+
+        foreach ($totaux['flux'] as &$fluxDevise) {
+            $fluxDevise['entrees'] = round($fluxDevise['entrees'], 2);
+            $fluxDevise['sorties'] = round($fluxDevise['sorties'], 2);
+        }
+
+        // ✅ Résultat final
+        return [
+            'status'  => 200,
+            'message' => 'Solde global de tous les divers calculé avec succès.',
+            'data'    => $totaux,
         ];
     }
 

@@ -133,44 +133,7 @@ class CaisseService
         }
     }
 
-    // public function calculerSoldeCaisse(): array
-    // {
-    //     // ✅ Flux entrée USD
-    //     $entreesUSD = Caisse::whereHas('devise', fn($q) => $q->where('symbole', 'USD'))
-    //         ->whereHas('typeOperation', fn($q) => $q->where('nature', 1))
-    //         ->sum('montant');
-
-    //     // ✅ Flux sortie USD
-    //     $sortiesUSD = Caisse::whereHas('devise', fn($q) => $q->where('symbole', 'USD'))
-    //         ->whereHas('typeOperation', fn($q) => $q->where('nature', 0))
-    //         ->sum('montant');
-
-    //     // ✅ Flux entrée GNF
-    //     $entreesGNF = Caisse::whereHas('devise', fn($q) => $q->where('symbole', 'GNF'))
-    //         ->whereHas('typeOperation', fn($q) => $q->where('nature', 1))
-    //         ->sum('montant');
-
-    //     // ✅ Flux sortie GNF
-    //     $sortiesGNF = Caisse::whereHas('devise', fn($q) => $q->where('symbole', 'GNF'))
-    //         ->whereHas('typeOperation', fn($q) => $q->where('nature', 0))
-    //         ->sum('montant');
-
-    //     // ✅ Solde Caisse
-    //     $soldeUSD = $entreesUSD - $sortiesUSD;
-    //     $soldeGNF = $entreesGNF - $sortiesGNF;
-
-    //     return [
-    //         // ✅ Solde final
-    //         'solde_usd'   => round($soldeUSD, 2),
-    //         'solde_gnf'   => round($soldeGNF, 2),
-
-    //         // ✅ Ajout des flux
-    //         'entrees_usd' => round($entreesUSD, 2),
-    //         'sorties_usd' => round($sortiesUSD, 2),
-    //         'entrees_gnf' => round($entreesGNF, 2),
-    //         'sorties_gnf' => round($sortiesGNF, 2),
-    //     ];
-    // }
+   
 
     public function calculerSoldeCaisse(): array
     {
