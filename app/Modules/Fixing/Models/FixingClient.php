@@ -2,13 +2,12 @@
 
 namespace App\Modules\Fixing\Models;
 
+use App\Modules\Administration\Models\User;
+use App\Modules\Settings\Models\Client;
+use App\Modules\Settings\Models\Devise;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use App\Modules\Settings\Models\Client;
-use App\Modules\Settings\Models\Devise;
-use App\Modules\Administration\Models\User;
-use App\Modules\Fondation\Models\Fondation;
 
 class FixingClient extends Model
 {
@@ -28,6 +27,10 @@ class FixingClient extends Model
         'created_by',
         'updated_by',
     ];
+
+    // ===============================
+    // 🔹 RELATIONS
+    // ===============================
 
     public function client()
     {
@@ -49,8 +52,33 @@ class FixingClient extends Model
         return $this->belongsTo(User::class, 'updated_by');
     }
 
-    public function fondations()
+    // ===============================
+    // 🔹 SCOPES
+    // ===============================
+
+    public function scopeVendus($query)
     {
-        return $this->hasMany(Fondation::class, 'id_fixing');
+        return $query->where('status', 'vendu');
+    }
+
+    public function scopeProvisoires($query)
+    {
+        return $query->where('status', 'provisoire');
+    }
+
+    // ===============================
+    // 🔹 LOGIQUE AUTOMATIQUE DU STATUT
+    // ===============================
+
+    protected static function booted()
+    {
+        static::saving(function ($fixing) {
+            // Si le prix_unitaire ou le discompte est absent → fixing provisoire
+            if (is_null($fixing->prix_unitaire) || is_null($fixing->discompte)) {
+                $fixing->status = 'provisoire';
+            } else {
+                $fixing->status = 'vendu';
+            }
+        });
     }
 }

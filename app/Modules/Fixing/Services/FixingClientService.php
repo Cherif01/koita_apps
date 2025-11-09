@@ -1,11 +1,11 @@
 <?php
+
 namespace App\Modules\Fixing\Services;
 
 use App\Modules\Comptabilite\Models\OperationClient;
 use App\Modules\Comptabilite\Models\OperationDivers;
 use App\Modules\Fixing\Models\FixingClient;
 use App\Modules\Fixing\Resources\FixingClientResource;
-use App\Modules\Fondation\Models\Fondation;
 use Carbon\Carbon;
 use Exception;
 use Illuminate\Support\Facades\Auth;
@@ -14,7 +14,7 @@ use Illuminate\Support\Facades\DB;
 class FixingClientService
 {
     /**
-     * 🔹 Enregistrer un nouveau Fixing Client
+     * ➕ Créer un nouveau fixing client
      */
     public function store(array $payload)
     {
@@ -26,22 +26,13 @@ class FixingClientService
             // ✅ Création du fixing client
             $fixing = FixingClient::create($payload);
 
-            // ✅ Mise à jour des fondations associées (si fournies)
-            if (! empty($payload['id_barre_fondu']) && is_array($payload['id_barre_fondu'])) {
-                Fondation::whereIn('id', $payload['id_barre_fondu'])
-                    ->update(['id_fixing' => $fixing->id]);
-            }
-
             DB::commit();
 
             return response()->json([
                 'status'  => 200,
                 'message' => 'Fixing client créé avec succès.',
-                'data'    => new FixingClientResource(
-                    $fixing->load(['client', 'devise', 'fondations', 'createur', 'modificateur'])
-                ),
+                
             ]);
-
         } catch (Exception $e) {
             DB::rollBack();
 
@@ -54,12 +45,12 @@ class FixingClientService
     }
 
     /**
-     * 🔹 Récupérer la liste de tous les fixings clients
+     * 📋 Récupérer tous les fixings clients
      */
     public function getAll()
     {
         try {
-            $fixings = FixingClient::with(['client', 'devise', 'fondations', 'createur', 'modificateur'])
+            $fixings = FixingClient::with(['client', 'devise', 'createur', 'modificateur'])
                 ->orderByDesc('id')
                 ->get();
 
@@ -68,7 +59,6 @@ class FixingClientService
                 'message' => 'Liste des fixings clients récupérée avec succès.',
                 'data'    => FixingClientResource::collection($fixings),
             ]);
-
         } catch (Exception $e) {
             return response()->json([
                 'status'  => 500,
@@ -79,12 +69,12 @@ class FixingClientService
     }
 
     /**
-     * 🔹 Récupérer un fixing client spécifique
+     * 🔍 Détails d’un fixing spécifique
      */
     public function getOne(int $id)
     {
         try {
-            $fixing = FixingClient::with(['client', 'devise', 'fondations', 'createur', 'modificateur'])
+            $fixing = FixingClient::with(['client', 'devise', 'createur', 'modificateur'])
                 ->find($id);
 
             if (! $fixing) {
@@ -99,7 +89,6 @@ class FixingClientService
                 'message' => 'Fixing client récupéré avec succès.',
                 'data'    => new FixingClientResource($fixing),
             ]);
-
         } catch (Exception $e) {
             return response()->json([
                 'status'  => 500,
@@ -109,6 +98,9 @@ class FixingClientService
         }
     }
 
+    /**
+     * ✏️ Mettre à jour un fixing client
+     */
     public function update(int $id, array $payload)
     {
         DB::beginTransaction();
@@ -123,7 +115,6 @@ class FixingClientService
                 ], 404);
             }
 
-            // 🔹 Mise à jour des champs de base
             $payload['updated_by'] = Auth::id();
             $fixing->update($payload);
 
@@ -132,9 +123,7 @@ class FixingClientService
             return response()->json([
                 'status'  => 200,
                 'message' => 'Fixing client mis à jour avec succès.',
-                'data'    => new FixingClientResource(
-                    $fixing->load(['client', 'devise', 'fondations', 'createur', 'modificateur'])
-                ),
+               
             ]);
         } catch (Exception $e) {
             DB::rollBack();
@@ -148,7 +137,7 @@ class FixingClientService
     }
 
     /**
-     * 🔹 Supprimer un fixing client
+     * 🗑️ Supprimer un fixing client
      */
     public function delete(int $id)
     {
@@ -171,7 +160,6 @@ class FixingClientService
                 'status'  => 200,
                 'message' => 'Fixing client supprimé avec succès.',
             ]);
-
         } catch (Exception $e) {
             DB::rollBack();
 
@@ -183,6 +171,9 @@ class FixingClientService
         }
     }
 
+    /**
+     * 📊 Calculer la facture d’un fixing
+     */
     public function calculerFacture(int $id_fixing): array
     {
         $fixing = FixingClient::with('client')->find($id_fixing);
@@ -194,119 +185,67 @@ class FixingClientService
             ];
         }
 
-        // 🔹 Constantes
-        $densite    = 22;
+        $poidsPro   = (float) $fixing->poids_pro;
+        $caratMoyen = (float) $fixing->carrat_moyen;
         $bourse     = (float) $fixing->bourse;
         $discompte  = (float) $fixing->discompte;
         $typeClient = $fixing->client?->type_client ?? 'local';
 
-        // 🔹 Récupération des fondations liées
-        $fondations = Fondation::where('id_fixing', $fixing->id)->get();
+        // 💎 Pureté = (poids_pro × carat_moyen) / 24
+        $pureteTotale = ($poidsPro * $caratMoyen) / 24;
 
-        if ($fondations->isEmpty()) {
-            return [
-                'id_fixing' => $fixing->id,
-                'message'   => 'Aucune fondation trouvée pour ce fixing.',
-            ];
-        }
+        // 💰 Calcul du prix unitaire
+        $prixUnitaire = $typeClient === 'local'
+            ? ($bourse / 34) - $discompte
+            : ($bourse / 31.10347) - (32 * $discompte);
 
-        // === Étape 1 : Calculs par fondation ===
-        $details            = [];
-        $poidsTotal         = 0;
-        $sommeCaratPonderee = 0;
-        $pureteTotale       = 0;
+        $totalFacture = $pureteTotale * $prixUnitaire;
 
-        foreach ($fondations as $fondation) {
-            $poids = (float) $fondation->poids_fondu;
-            $carat = (float) $fondation->carrat_fondu;
-
-            // 💎 Pureté brute (poids d’or pur)
-            $purete = ($poids * $carat) / 24;
-
-            $poidsTotal += $poids;
-            $sommeCaratPonderee += $poids * $carat;
-            $pureteTotale += $purete;
-
-            $details[] = [
-                'id_fondation'  => $fondation->id,
-                'reference'     => $fondation->initFondation?->reference ?? null,
-                'poids_fondu'   => round($poids, 2),
-                'carrat_fondu'  => round($carat, 2),
-                'purete'        => round($purete, 2),
-                'montant_barre' => 0, // sera défini après le calcul du prix unitaire
-            ];
-        }
-
-        // === Étape 2 : Calculs globaux ===
-        $carratMoyen  = $poidsTotal > 0 ? $sommeCaratPonderee / $poidsTotal : 0;
-        $carratMoyen  = round($carratMoyen, 2);
-        $pureteTotale = round($pureteTotale, 3);
-
-        // === Étape 3 : Calcul du prix unitaire selon le type de client ===
-        if ($typeClient === 'local') {
-            $prixUnitaire = ($bourse / 34) - $discompte;
-        } else {
-            $prixUnitaire = ($bourse / 31.10347) - (32 * $discompte);
-        }
-
-        // === Étape 4 : Calcul du montant_barre et total_facture ===
-        $totalFacture = 0;
-        foreach ($details as &$detail) {
-            $detail['montant_barre'] = round($detail['purete'] * $prixUnitaire, 2);
-            $totalFacture += $detail['montant_barre'];
-        }
-        unset($detail); // bonne pratique
-
-        // === Étape 5 : Arrondis et retour final ===
-        $prixUnitaireTronque = $prixUnitaire ? $this->truncate($prixUnitaire, 2) : null;
-        $totalFactureTronque = round($totalFacture, 2);
-
+        // Arrondis
         return [
             'id_fixing'     => $fixing->id,
             'type_client'   => $typeClient,
-            'prix_unitaire' => $prixUnitaireTronque,
-            'poids_total'   => round($poidsTotal, 2),
-            'carrat_moyen'  => $carratMoyen,
-            'bourse'        => $bourse,
-            'discompte'     => $discompte,
+            'poids_total'   => round($poidsPro, 2),
+            'carrat_moyen'  => round($caratMoyen, 2),
+            'bourse'        => round($bourse, 2),
+            'discompte'     => round($discompte, 2),
             'purete_totale' => round($pureteTotale, 2),
-            'fondations'    => $details,
-            'total_facture' => $totalFactureTronque,
+            'prix_unitaire' => round($prixUnitaire, 2),
+            'total_facture' => round($totalFacture, 2),
         ];
     }
 
-/**
- * 🔹 Tronque une valeur sans arrondir (utile pour les montants financiers).
- */
+    /**
+     * ⚙️ Tronquer un nombre sans arrondir
+     */
     private function truncate(float $value, int $decimals = 2): float
     {
         $factor = pow(10, $decimals);
         return floor($value * $factor) / $factor;
     }
 
+    /**
+     * 📈 Statistiques globales des fixings
+     */
     public function statistiquesFixing()
     {
         try {
-            $statsStatus = FixingClient::selectRaw('LOWER(status) as status, COUNT(*) as total')
+            $stats = FixingClient::selectRaw('LOWER(status) as status, COUNT(*) as total')
                 ->groupBy('status')
                 ->pluck('total', 'status')
                 ->toArray();
 
-            $statsWeek  = $this->fixingsClientSemaine();
-            $recentActs = $this->dernieresActivites();
-
             return response()->json([
                 'status'  => 200,
-                'message' => 'Statistiques des fixings récupérées avec succès.',
+                'message' => 'Statistiques récupérées avec succès.',
                 'data'    => [
-                    'en_attente'          => $statsStatus['en attente'] ?? 0,
-                    'confirmer'           => $statsStatus['confirmer'] ?? 0,
-                    'stats_semaine'       => $statsWeek,
-                    'dernieres_activites' => $recentActs,
+                    'provisoires' => $stats['provisoire'] ?? 0,
+                    'vendus'      => $stats['vendu'] ?? 0,
+                    'par_semaine' => $this->fixingsClientSemaine(),
+                    'activites'   => $this->dernieresActivites(),
                 ],
-            ], 200);
-
-        } catch (\Exception $e) {
+            ]);
+        } catch (Exception $e) {
             return response()->json([
                 'status'  => 500,
                 'message' => 'Erreur lors de la récupération des statistiques.',
@@ -315,78 +254,38 @@ class FixingClientService
         }
     }
 
+    /**
+     * 📅 Statistiques de la semaine
+     */
     public function fixingsClientSemaine(): array
     {
-        $joursSemaine        = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
-        $aujourdhui          = Carbon::today();
-        $statsFixingsSemaine = [];
+        $jours = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
+        $today = Carbon::today();
+        $result = [];
 
         for ($i = 0; $i < 7; $i++) {
-            $jour = $aujourdhui->startOfWeek()->addDays($i);
-
-            // ✅ Récupère les fixings client du jour
+            $jour = $today->startOfWeek()->addDays($i);
             $fixings = FixingClient::whereDate('created_at', $jour)->get();
 
-            // ✅ Calcul des montants (comme dans ton code solde client)
             $total = 0;
             foreach ($fixings as $fixing) {
-                $calcul = app(FixingClientService::class)->calculerFacture($fixing->id);
-                $total += (float) ($calcul['purete_totale'] ?? 0);
-
+                $calcul = $this->calculerFacture($fixing->id);
+                $total += (float) ($calcul['total_facture'] ?? 0);
             }
 
-            $statsFixingsSemaine[] = [
-                'jour'  => $joursSemaine[$i],
-                'total' => (float) $total,
-                'date'  => $jour->format('Y-m-d'), // ✅ utile pour debug
+            $result[] = [
+                'jour'  => $jours[$i],
+                'total' => round($total, 2),
+                'date'  => $jour->format('Y-m-d'),
             ];
         }
 
-        return $statsFixingsSemaine;
+        return $result;
     }
 
-    public function statistiquesOperationsAujourdHui()
-    {
-        try {
-            $aujourdhui = Carbon::today();
-
-            // ✅ Opérations Client du jour
-            $opsClient = OperationClient::whereDate('created_at', $aujourdhui)->count();
-
-            // ✅ Opérations Divers du jour
-            $opsDivers = OperationDivers::whereDate('created_at', $aujourdhui)->count();
-
-            // ✅ Fixings Client du jour par statut
-            $fixingsEnAttente = FixingClient::where('status', 'en attente')
-                ->whereDate('created_at', $aujourdhui)
-                ->count();
-
-            $fixingsConfirmer = FixingClient::where('status', 'confirmer')
-                ->whereDate('created_at', $aujourdhui)
-                ->count();
-
-            return response()->json([
-                'status'  => 200,
-                'message' => 'Statistiques des opérations d\'aujourd\'hui récupérées avec succès.',
-                'data'    => [
-                    'operations_client'  => $opsClient,
-                    'operations_divers'  => $opsDivers,
-                    'fixings_en_attente' => $fixingsEnAttente,
-                    'fixings_confirmer'  => $fixingsConfirmer,
-                    'date'               => $aujourdhui->format('Y-m-d'),
-                ],
-            ], 200);
-
-        } catch (\Exception $e) {
-
-            return response()->json([
-                'status'  => 500,
-                'message' => 'Erreur lors de la récupération des statistiques.',
-                'error'   => $e->getMessage(),
-            ], 500);
-        }
-    }
-
+    /**
+     * 🕒 Dernières activités
+     */
     public function dernieresActivites(): array
     {
         $activites = collect([]);
@@ -396,24 +295,6 @@ class FixingClientService
                 'type' => 'fixing_client',
                 'id'   => $item->id,
                 'info' => $item->status,
-                'date' => $item->created_at,
-            ]);
-        });
-
-        OperationClient::latest()->take(5)->get(['id', 'montant', 'created_at'])->each(function ($item) use (&$activites) {
-            $activites->push([
-                'type' => 'operation_client',
-                'id'   => $item->id,
-                'info' => (float) $item->montant,
-                'date' => $item->created_at,
-            ]);
-        });
-
-        OperationDivers::latest()->take(5)->get(['id', 'montant', 'created_at'])->each(function ($item) use (&$activites) {
-            $activites->push([
-                'type' => 'operation_divers',
-                'id'   => $item->id,
-                'info' => (float) $item->montant,
                 'date' => $item->created_at,
             ]);
         });
@@ -430,5 +311,4 @@ class FixingClientService
             ])
             ->toArray();
     }
-
 }
