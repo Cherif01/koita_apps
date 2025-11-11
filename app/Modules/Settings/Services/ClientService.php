@@ -588,6 +588,8 @@ class ClientService
         $defaultExcept = [
             'migrations',
             'users',
+            'devise',
+            'clients',
             'password_resets',
             'failed_jobs',
             'personal_access_tokens',
