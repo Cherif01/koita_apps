@@ -3,24 +3,17 @@
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\DB;
 
 return new class extends Migration
 {
     public function up(): void
     {
-        Schema::table('fixing_clients', function (Blueprint $table) {
-            $table->enum('status', ['provisoire', 'vendu'])
-                  ->default('provisoire')
-                  ->change();
-        });
+        DB::statement("ALTER TABLE fixing_clients MODIFY status ENUM('provisoire', 'vendu') DEFAULT 'provisoire'");
     }
 
     public function down(): void
     {
-        Schema::table('fixing_clients', function (Blueprint $table) {
-            $table->enum('status', ['en attente', 'confirmer', 'valider'])
-                  ->default('en attente')
-                  ->change();
-        });
+        DB::statement("ALTER TABLE fixing_clients MODIFY status ENUM('en attente', 'confirmer', 'valider') DEFAULT 'en attente'");
     }
 };
