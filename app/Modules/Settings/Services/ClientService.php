@@ -436,14 +436,15 @@ class ClientService
 
     public function getReleveClient(int $id_client): array
     {
-        // 1) Construire les lignes "opérations"
+        // 🔹 Opérations financières
         $operations = OperationClient::with(['typeOperation', 'devise', 'compte.banque'])
             ->where('id_client', $id_client)
             ->orderBy('created_at', 'asc')
             ->get()
             ->map(function ($op) {
-                $nature = (int) ($op->typeOperation?->nature ?? 0); // 1=entrée, 0=sortie
+                $nature = (int) ($op->typeOperation?->nature ?? 0); // 1 = entrée, 0 = sortie
                 $devise = strtolower($op->devise?->symbole ?? 'gnf');
+
                 return [
                     'type'                => 'operation',
                     'date'                => $op->created_at?->format('Y-m-d H:i:s'),
@@ -465,18 +466,17 @@ class ClientService
                 ];
             });
 
-        // 2) Construire les lignes "fixings"
+        // 🔹 Fixings
         $fixings = FixingClient::with(['devise'])
             ->where('id_client', $id_client)
             ->whereIn('status', ['vendu', 'provisoire'])
             ->orderBy('created_at', 'asc')
             ->get()
             ->map(function ($fix) {
-                $calc   = app(FixingClientService::class)->calculerFacture($fix->id);
-                $devise = strtolower($fix->devise?->symbole ?? 'gnf');
+                $calc    = app(FixingClientService::class)->calculerFacture($fix->id);
+                $devise  = strtolower($fix->devise?->symbole ?? 'gnf');
+                $isVendu = ($fix->status === 'vendu');
 
-                // Si provisoire => pas d'impact financier
-                $isVendu      = ($fix->status === 'vendu');
                 $totalFacture = (float) ($calc['total_facture'] ?? 0.0);
                 $poids        = (float) ($calc['poids_total'] ?? 0.0);
 
@@ -488,29 +488,26 @@ class ClientService
                     'banque'              => null,
                     'numero_compte'       => null,
                     'devise'              => $devise,
-
-                    // 👉 CHOIX UNIQUE: on passe la facture en "debit" pour impacter le solde une seule fois
                     'debit'               => $isVendu ? $totalFacture : 0.0,
                     'credit'              => 0.0,
-
                     'solde_apres'         => 0.0,
                     'solde_apres_fixing'  => 0.0,
-
                     'reference_fixing'    => 'FIX-' . str_pad($fix->id, 5, '0', STR_PAD_LEFT),
                     'libelle_fixing'      => "Vente or : {$poids} g à " . (float) ($calc['prix_unitaire'] ?? 0) . " /g",
                     'poids_entree'  => 0.0,
-                    'poids_sortie'  => $poids, // le poids vendu (0 si tu veux pour provisoire)
+                    'poids_sortie'  => $poids,
                     'stock_apres'   => 0.0,
-                    'total_facture' => $totalFacture, // info affichage
+                    'total_facture' => $totalFacture,
                 ];
             });
 
-                                                                                // 3) Fusion + tri ASC
-        $rows = $operations->concat($fixings)->sortBy('date')->values()->all(); // ← en tableau
+        // 🔹 Fusion chronologique (ascendant)
+        $rows = $operations->concat($fixings)->sortBy('date')->values()->all();
 
-                      // 4) Cumuls progressifs (par devise) — en modifiant par INDEX
-        $soldes = []; // ex: ['gnf'=>0, 'usd'=>0]
-        $stocks = []; // si tu veux séparer l'or par devise, sinon une seule clé ex: ['or'=>0]
+        // 🔹 Cumul des soldes et stocks
+        $soldes = [];
+        $stocks = [];
+
         for ($i = 0; $i < count($rows); $i++) {
             $sym = $rows[$i]['devise'] ?: 'gnf';
             if (! isset($soldes[$sym])) {
@@ -521,21 +518,26 @@ class ClientService
                 $stocks[$sym] = 0.0;
             }
 
-            // Argent avant impact fixing
+            // 💰 1. Solde avant fixing
             $soldes[$sym] += ((float) $rows[$i]['credit'] - (float) $rows[$i]['debit']);
             $rows[$i]['solde_apres'] = round($soldes[$sym], 2);
 
-            // Or (décrémenter le stock sur vente)
+            // 💰 2. Si fixing vendu → impacter après
+            if ($rows[$i]['type'] === 'fixing' && (float) $rows[$i]['total_facture'] > 0) {
+                $soldes[$sym] -= (float) $rows[$i]['total_facture'];
+            }
+
+            $rows[$i]['solde_apres_fixing'] = round($soldes[$sym], 2);
+
+            // ⚖️ 3. Gestion du stock d’or
             if ($rows[$i]['type'] === 'fixing') {
                 $stocks[$sym] -= (float) $rows[$i]['poids_sortie'];
             }
-            $rows[$i]['stock_apres'] = round($stocks[$sym], 3);
 
-            // Solde après fixing = même chose que solde_apres (car le "debit" du fixing est déjà compté)
-            $rows[$i]['solde_apres_fixing'] = round($soldes[$sym], 2);
+            $rows[$i]['stock_apres'] = round($stocks[$sym], 3);
         }
 
-        // 5) Tri DESC pour affichage
+        // 🔁 Tri décroissant pour affichage (plus récent en premier)
         usort($rows, fn($a, $b) => strcmp($b['date'], $a['date']));
 
         return [
