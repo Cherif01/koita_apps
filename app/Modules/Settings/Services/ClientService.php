@@ -803,7 +803,7 @@ class ClientService
             ->orderBy('created_at', 'asc')
             ->get()
             ->map(function ($op) {
-                $nature = (int) ($op->typeOperation?->nature ?? 0); // 1 = entrée, 0 = sortie
+                $nature = (int) ($op->typeOperation?->nature ?? 0);
                 $devise = strtolower($op->devise?->symbole ?? 'gnf');
 
                 return [
@@ -842,11 +842,11 @@ class ClientService
                 return [
                     'type'                => 'livraison',
                     'date'                => $livraison->created_at?->format('Y-m-d H:i:s'),
-                    'reference_operation' => $livraison->reference,
+                    'reference_operation' => null,
                     'libelle_operation'   => 'Livraison d’or',
                     'banque'              => null,
                     'numero_compte'       => null,
-                    'devise'              => 'gnf', // tu peux adapter selon ta logique
+                    'devise'              => 'gnf', // Devise neutre
                     'debit'               => 0.0,
                     'credit'              => 0.0,
                     'solde_avant'         => 0.0,
@@ -884,7 +884,7 @@ class ClientService
                     'banque'              => null,
                     'numero_compte'       => null,
                     'devise'              => $devise,
-                    'debit'               => $total, // sortie financière
+                    'debit'               => $total,
                     'credit'              => 0.0,
                     'solde_avant'         => 0.0,
                     'solde_apres'         => 0.0,
@@ -899,7 +899,7 @@ class ClientService
             });
 
         // ============================
-        // 🔁 FUSION & TRI CHRONOLOGIQUE
+        // 🔁 FUSION GLOBALE
         // ============================
         $rows = $operations
             ->concat($livraisons)
@@ -909,15 +909,14 @@ class ClientService
             ->all();
 
         // ============================
-        // ⚖️ CALCUL PROGRESSIF (solde + stock)
+        // ⚖️ CALCULS PROGRESSIFS
         // ============================
         $soldes  = [];
-        $stocks  = [];
+        $stocks  = 0.0; // ✅ Le stock est global (pas lié à la devise)
         $grouped = [];
 
         foreach ($devises as $sym) {
             $soldes[$sym]  = 0.0;
-            $stocks[$sym]  = 0.0;
             $grouped[$sym] = [];
         }
 
@@ -927,23 +926,23 @@ class ClientService
             if (! isset($grouped[$sym])) {
                 $grouped[$sym] = [];
                 $soldes[$sym]  = 0.0;
-                $stocks[$sym]  = 0.0;
             }
 
             // 🧮 Solde avant
             $solde_avant = $soldes[$sym];
+            $stock_avant = $stocks;
 
             // 💰 Calcul du solde
             $soldes[$sym] += ((float) $ligne['credit'] - (float) $ligne['debit']);
 
-            // 🪙 Stock
+            // 💎 Gestion du stock
             if ($ligne['type'] === 'livraison') {
-                $stocks[$sym] += (float) $ligne['poids_entree'];
+                $stocks += (float) $ligne['poids_entree']; // entrée
             } elseif ($ligne['type'] === 'fixing') {
-                $stocks[$sym] -= (float) $ligne['poids_sortie'];
+                $stocks -= (float) $ligne['poids_sortie']; // sortie
             }
 
-            // 💎 Impact fixing sur solde
+            // 💰 Impact du fixing sur solde financier
             if ($ligne['type'] === 'fixing' && $ligne['total_facture'] > 0) {
                 $soldes[$sym] -= (float) $ligne['total_facture'];
             }
@@ -952,12 +951,13 @@ class ClientService
             $ligne['solde_avant']        = round($solde_avant, 2);
             $ligne['solde_apres']        = round($soldes[$sym], 2);
             $ligne['solde_apres_fixing'] = round($soldes[$sym], 2);
-            $ligne['stock_apres']        = round($stocks[$sym], 3);
+            $ligne['stock_avant']        = round($stock_avant, 3);
+            $ligne['stock_apres']        = round($stocks, 3);
 
             $grouped[$sym][] = $ligne;
         }
 
-        // 🔁 Tri décroissant
+        // 🔁 Tri décroissant (plus récent d'abord)
         foreach ($grouped as $dev => &$ops) {
             usort($ops, fn($a, $b) => strcmp($b['date'], $a['date']));
             $ops = array_values($ops);
