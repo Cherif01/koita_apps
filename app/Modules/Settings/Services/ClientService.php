@@ -788,16 +788,14 @@ class ClientService
     // }
     public function getReleveClient(int $id_client): array
     {
-        // 🔹 1. Récupérer toutes les devises actives
+        // 🔹 1. Récupérer les devises actives
         $devises = Devise::pluck('symbole')
             ->map(fn($s) => strtolower($s))
             ->unique()
             ->values()
             ->all();
 
-        // ============================
-        // 💰 PARTIE 1 : OPÉRATIONS FINANCIÈRES
-        // ============================
+        // 🔹 2. Récupérer les opérations
         $operations = OperationClient::with(['typeOperation', 'devise', 'compte.banque'])
             ->where('id_client', $id_client)
             ->orderBy('created_at', 'asc')
@@ -823,47 +821,13 @@ class ClientService
                     'libelle_fixing'      => null,
                     'poids_entree'        => 0.0,
                     'poids_sortie'        => 0.0,
+                    'stock_avant'         => 0.0,
                     'stock_apres'         => 0.0,
                     'total_facture'       => 0.0,
                 ];
             });
 
-        // ============================
-        // 📦 PARTIE 2 : LIVRAISONS (Entrées de stock)
-        // ============================
-        $livraisons = InitLivraison::where('id_client', $id_client)
-            ->orderBy('created_at', 'asc')
-            ->get()
-            ->map(function ($livraison) {
-                $poidsFondus = Fondation::whereHas('expedition', function ($q) use ($livraison) {
-                    $q->where('id_init_livraison', $livraison->id);
-                })->sum('poids_fondu');
-
-                return [
-                    'type'                => 'livraison',
-                    'date'                => $livraison->created_at?->format('Y-m-d H:i:s'),
-                    'reference_operation' => null,
-                    'libelle_operation'   => 'Livraison d’or',
-                    'banque'              => null,
-                    'numero_compte'       => null,
-                    'devise'              => 'gnf', // Devise neutre
-                    'debit'               => 0.0,
-                    'credit'              => 0.0,
-                    'solde_avant'         => 0.0,
-                    'solde_apres'         => 0.0,
-                    'solde_apres_fixing'  => 0.0,
-                    'reference_fixing'    => null,
-                    'libelle_fixing'      => null,
-                    'poids_entree'        => (float) $poidsFondus,
-                    'poids_sortie'        => 0.0,
-                    'stock_apres'         => 0.0,
-                    'total_facture'       => 0.0,
-                ];
-            });
-
-        // ============================
-        // 💎 PARTIE 3 : FIXINGS (Sorties d’or)
-        // ============================
+        // 🔹 3. Récupérer les fixings
         $fixings = FixingClient::with(['devise'])
             ->where('id_client', $id_client)
             ->whereIn('status', ['vendu', 'provisoire'])
@@ -893,33 +857,55 @@ class ClientService
                     'libelle_fixing'      => "Vente or : {$poids} g à {$prixU} /g",
                     'poids_entree'  => 0.0,
                     'poids_sortie'  => $poids,
+                    'stock_avant'   => 0.0,
                     'stock_apres'   => 0.0,
                     'total_facture' => $total,
                 ];
             });
 
-        // ============================
-        // 🔁 FUSION GLOBALE
-        // ============================
-        $rows = $operations
-            ->concat($livraisons)
-            ->concat($fixings)
-            ->sortBy('date')
-            ->values()
-            ->all();
+        // 🔹 4. Récupérer les livraisons
+        $livraisons = InitLivraison::where('id_client', $id_client)
+            ->orderBy('created_at', 'asc')
+            ->get()
+            ->map(function ($liv) {
+                $poids = (float) ($liv->poids_total ?? 0.0);
+                return [
+                    'type'                => 'livraison',
+                    'date'                => $liv->created_at?->format('Y-m-d H:i:s'),
+                    'reference_operation' => $liv->reference ?? null,
+                    'libelle_operation'   => 'Livraison d’or',
+                    'banque'              => null,
+                    'numero_compte'       => null,
+                    'devise'              => 'gnf',
+                    'debit'               => 0.0,
+                    'credit'              => 0.0,
+                    'solde_avant'         => 0.0,
+                    'solde_apres'         => 0.0,
+                    'solde_apres_fixing'  => 0.0,
+                    'reference_fixing'    => null,
+                    'libelle_fixing'      => null,
+                    'poids_entree'        => $poids,
+                    'poids_sortie'        => 0.0,
+                    'stock_avant'         => 0.0,
+                    'stock_apres'         => 0.0,
+                    'total_facture'       => 0.0,
+                ];
+            });
 
-        // ============================
-        // ⚖️ CALCULS PROGRESSIFS
-        // ============================
-        $soldes  = [];
-        $stocks  = 0.0; // ✅ Le stock est global (pas lié à la devise)
-        $grouped = [];
+        // 🔹 5. Fusion complète (opérations + fixings + livraisons)
+        $rows = $operations->concat($fixings)->concat($livraisons)->sortBy('date')->values()->all();
+
+        // 🔹 6. Initialisation
+        $soldes      = [];
+        $grouped     = [];
+        $stockGlobal = 0.0; // ⚙️ Un seul stock global partagé
 
         foreach ($devises as $sym) {
             $soldes[$sym]  = 0.0;
             $grouped[$sym] = [];
         }
 
+        // 🔹 7. Calculs
         foreach ($rows as $ligne) {
             $sym = $ligne['devise'] ?: 'gnf';
 
@@ -928,49 +914,42 @@ class ClientService
                 $soldes[$sym]  = 0.0;
             }
 
-            // 🧮 Solde avant
             $solde_avant = $soldes[$sym];
-            $stock_avant = $stocks;
+            $stock_avant = $stockGlobal;
 
-            // 💰 Calcul du solde
+            // 💰 Gestion du solde monétaire
             $soldes[$sym] += ((float) $ligne['credit'] - (float) $ligne['debit']);
 
-            // 💎 Gestion du stock
-            if ($ligne['type'] === 'livraison') {
-                $stocks += (float) $ligne['poids_entree']; // entrée
-            } elseif ($ligne['type'] === 'fixing') {
-                $stocks -= (float) $ligne['poids_sortie']; // sortie
+            // ⚖️ Gestion du stock global
+            if ($ligne['type'] === 'fixing') {
+                $stockGlobal -= (float) $ligne['poids_sortie'];
+            } elseif ($ligne['type'] === 'livraison') {
+                $stockGlobal += (float) $ligne['poids_entree'];
             }
 
-            // 💰 Impact du fixing sur solde financier
-            if ($ligne['type'] === 'fixing' && $ligne['total_facture'] > 0) {
-                $soldes[$sym] -= (float) $ligne['total_facture'];
-            }
-
-            // 📊 MAJ des champs
+            // 🔁 Mise à jour des valeurs
             $ligne['solde_avant']        = round($solde_avant, 2);
             $ligne['solde_apres']        = round($soldes[$sym], 2);
             $ligne['solde_apres_fixing'] = round($soldes[$sym], 2);
             $ligne['stock_avant']        = round($stock_avant, 3);
-            $ligne['stock_apres']        = round($stocks, 3);
+            $ligne['stock_apres']        = round($stockGlobal, 3);
 
             $grouped[$sym][] = $ligne;
         }
 
-        // 🔁 Tri décroissant (plus récent d'abord)
+        // 🔹 8. Tri décroissant par devise
         foreach ($grouped as $dev => &$ops) {
             usort($ops, fn($a, $b) => strcmp($b['date'], $a['date']));
             $ops = array_values($ops);
         }
         unset($ops);
 
-        // ============================
-        // ✅ STRUCTURE FINALE
-        // ============================
+        // 🔹 9. Retour final
         return [
             'status'                 => 200,
             'message'                => 'Relevé combiné généré avec succès.',
             'operations_financieres' => (object) $grouped,
+            'stock_final'            => round($stockGlobal, 3), // ✅ visible globalement
         ];
     }
 
