@@ -57,6 +57,19 @@ class BarreController extends Controller
             // Make fixing optional
             $fixing = $data['fixing'] ?? null;
 
+            if($fixing){
+                foreach ($data['barres'] as $item) {
+                    // If ID exists AND has already been fixed, then reject the new fixing
+                    if (!empty($item['id'])) {
+                        $barre = Barre::where('id', $item['id'])->where('is_fixed', true)->first();
+
+                        if($barre){
+                            return $this->errorResponse("Impossible de faire un nouveau fixing. Certaine barres ont été déjà fixé.");
+                        }
+                    }
+                }
+            }
+
             if (!empty($fixing) && is_array($fixing)) {
                 if(!is_null($fixing['bourse']) && !is_null($fixing['discount']) && $fixing['bourse'] > 0 && $fixing['discount'] > 0){
                     // Safely check devise if provided
