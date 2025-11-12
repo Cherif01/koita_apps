@@ -1193,7 +1193,7 @@ class ClientService
                     'libelle_operation'   => 'Livraison d’or',
                     'banque'              => null,
                     'numero_compte'       => null,
-                    'devise'              => 'gnf',
+                    'devise'              => 'usd',
                     'debit'               => 0.0,
                     'credit'              => 0.0,
                     'solde_avant'         => 0.0,
