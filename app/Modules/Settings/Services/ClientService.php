@@ -436,7 +436,9 @@ class ClientService
 
     public function getReleveClient(int $id_client): array
     {
-        // 🔹 Opérations financières
+        // ============================
+        // 💰 PARTIE 1 : Opérations financières
+        // ============================
         $operations = OperationClient::with(['typeOperation', 'devise', 'compte.banque'])
             ->where('id_client', $id_client)
             ->orderBy('created_at', 'asc')
@@ -464,7 +466,9 @@ class ClientService
                 ];
             });
 
-        // 🔹 Fixings
+        // ============================
+        // 🟡 PARTIE 2 : Fixings (or)
+        // ============================
         $fixings = FixingClient::with(['devise'])
             ->where('id_client', $id_client)
             ->whereIn('status', ['vendu', 'provisoire'])
@@ -481,7 +485,7 @@ class ClientService
                     'banque'              => null,
                     'numero_compte'       => null,
                     'devise'              => strtolower($fix->devise?->symbole ?? 'gnf'),
-                    'debit'               => (float) ($calcul['total_facture'] ?? 0),
+                    'debit'               => 0,
                     'credit'              => 0,
                     'solde_apres'         => 0,
                     'solde_apres_fixing'  => 0,
@@ -494,32 +498,39 @@ class ClientService
                 ];
             });
 
-        // 🔹 Fusion chronologique (du plus ancien au plus récent)
-        $chronologique = $operations->concat($fixings)->sortBy('date')->values();
+        // ============================
+        // 🔁 FUSION CHRONOLOGIQUE
+        // ============================
+        $chronologique = $operations->concat($fixings)
+            ->sortBy('date')
+            ->values();
 
-        // 🔹 Calcul progressif des soldes et du stock
+        // ============================
+        // ⚙️ CALCUL DU SOLDE ET STOCK PROGRESSIF
+        // ============================
         $soldes = [];
         $stocks = [];
 
         foreach ($chronologique as &$ligne) {
             $symbole = $ligne['devise'] ?? 'gnf';
 
-            // Initialisation des soldes et stocks
+            // Initialisation
             $soldes[$symbole] = $soldes[$symbole] ?? 0;
             $stocks[$symbole] = $stocks[$symbole] ?? 0;
 
-            // 🔸 Solde avant fixing
-            $soldes[$symbole] += $ligne['credit'] - $ligne['debit'];
+            // ✅ Solde après opérations normales (crédit - débit)
+            $soldes[$symbole] += ($ligne['credit'] - $ligne['debit']);
             $ligne['solde_apres'] = round($soldes[$symbole], 2);
 
-            // 🔸 Si c’est un fixing, impacter le solde_apres_fixing après déduction de la facture
+            // ✅ Si c’est un fixing → on déduit le total_facture
             if ($ligne['type'] === 'fixing') {
-                $ligne['solde_apres_fixing'] = round($ligne['solde_apres'] - (float) $ligne['total_facture'], 2);
-            } else {
-                $ligne['solde_apres_fixing'] = round($ligne['solde_apres'], 2);
+                $soldes[$symbole] -= (float) $ligne['total_facture'];
             }
 
-            // 🔸 Gestion du stock d’or
+            // ✅ Enregistrer le solde après fixing
+            $ligne['solde_apres_fixing'] = round($soldes[$symbole], 2);
+
+            // ✅ Gestion du stock d’or
             if ($ligne['type'] === 'fixing') {
                 $stocks[$symbole] -= $ligne['poids_sortie'];
             }
@@ -527,10 +538,14 @@ class ClientService
             $ligne['stock_apres'] = round($stocks[$symbole], 3);
         }
 
-        // 🔁 Tri du plus récent au plus ancien
+        // ============================
+        // 🔁 TRI DÉCROISSANT
+        // ============================
         $chronologique = $chronologique->sortByDesc('date')->values();
 
-        // ✅ Structure finale
+        // ============================
+        // ✅ STRUCTURE FINALE
+        // ============================
         return [
             'status'               => 200,
             'message'              => 'Relevé combiné généré avec succès.',
