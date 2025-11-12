@@ -49,10 +49,10 @@ trait Helper
         $somme_pureter = 0;
 
         foreach($barres as $barre){
-            $somme_pureter = $somme_pureter + $this->pureter($barre->poid_pure, $barre->carrat_pure);
+            $somme_pureter += $this->pureter($barre->poid_pure, $barre->carrat_pure);
         }
 
-        return (float) number_format($somme_pureter, 2);
+        return $somme_pureter;
     }
 
     public function poidsFixing($fixing_id)
