@@ -24,10 +24,11 @@ trait Helper
         $barres = Barre::where('achat_id', $achat_id)->get();
 
         // $multplication = 0;
+        $sum_pureter = 0;
 
         foreach ($barres as $barre) {
             // $multplication += $barre->poid_pure * $barre->carrat_pure;
-            $sum_pureter = $this->pureter($barre->poid_pure, $barre->carrat_pure);
+            $sum_pureter += $this->pureter($barre->poid_pure, $barre->carrat_pure);
         }
 
         $poids = $barres->sum('poid_pure');
@@ -85,10 +86,10 @@ trait Helper
 
     public function carratFixing($fixing_id)
     {
-        $multplication = $this->poidsTimeCarrat($fixing_id);
+        $sum_pureter = $this->sumFixingPureter($fixing_id);
         $poids_total = $this->poidsFixing($fixing_id);
 
-        $result = $poids_total > 0 ? ($multplication / $poids_total) : 0;
+        $result = $poids_total > 0 ? ($sum_pureter / $poids_total) * 24 : 0;
 
         return $result;
     }
@@ -112,7 +113,7 @@ trait Helper
                 $barre_fondue = Fondation::where('ids_barres', $fixing_barre->barre_id)->first();
 
                 if ($barre_fondue && $barre_fondue->statut == 'corriger') {
-                    $multplication += $barre_fondue->poids_dubai * $barre_fondue->poids_dubai;
+                    $multplication += $barre_fondue->poids_dubai * $barre_fondue->carrat_dubai;
                 } else {
                     $multplication += $barre->poid_pure * $barre->carrat_pure;
                 }
@@ -120,6 +121,36 @@ trait Helper
         }
 
         return $multplication;
+    }
+
+    public function sumFixingPureter($fixing)
+    {
+        $fixing_barres = FixingBarre::where('fixing_id', $fixing)->get();
+
+        if (!$fixing_barres) {
+            return 0;
+        }
+
+        $somme_pureter = 0;
+
+        foreach ($fixing_barres as $fixing_barre) {
+            $barre = Barre::find($fixing_barre->barre_id);
+
+            if($barre->status == "fondue"){
+                $barre_fondue = Fondation::where('ids_barres', $fixing_barre->barre_id)->first();
+
+                if ($barre_fondue && $barre_fondue->statut == 'corriger') {
+                    $somme_pureter += $this->pureter($barre_fondue->poids_dubai, $barre_fondue->carrat_dubai);
+                } else {
+                    $somme_pureter += $this->pureter($barre->poid_pure, $barre->carrat_pure);
+                }
+            }else{
+                $somme_pureter += $this->pureter($barre->poid_pure, $barre->carrat_pure);
+            }
+
+        }
+
+        return (float) number_format($somme_pureter, 2);
     }
 
     public function barreFondue($id)
