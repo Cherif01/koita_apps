@@ -433,6 +433,7 @@ class ClientService
     //         'stock'                  => $stockClient,
     //     ];
     // }
+
     public function getReleveClient(int $id_client): array
     {
         // 🔹 Opérations financières
@@ -454,13 +455,12 @@ class ClientService
                     'credit'              => $nature == 1 ? (float) $op->montant : 0,
                     'solde_apres'         => 0,
                     'solde_apres_fixing'  => 0,
-
-                    // Colonnes or vides
                     'reference_fixing'    => null,
                     'libelle_fixing'      => null,
                     'poids_entree'        => 0,
                     'poids_sortie'        => 0,
                     'stock_apres'         => 0,
+                    'total_facture'       => 0,
                 ];
             });
 
@@ -481,62 +481,53 @@ class ClientService
                     'banque'              => null,
                     'numero_compte'       => null,
                     'devise'              => strtolower($fix->devise?->symbole ?? 'gnf'),
-                    'debit'               => 0,
+                    'debit'               => (float) ($calcul['total_facture'] ?? 0), // 🔹 impact sur solde
                     'credit'              => 0,
                     'solde_apres'         => 0,
                     'solde_apres_fixing'  => 0,
-
-                    // Colonnes liées à l’or
                     'reference_fixing'    => "FIX-" . str_pad($fix->id, 5, '0', STR_PAD_LEFT),
                     'libelle_fixing'      => "Vente or : {$calcul['poids_total']} g à {$calcul['prix_unitaire']} /g",
                     'poids_entree'  => 0,
                     'poids_sortie'  => (float) ($calcul['poids_total'] ?? 0),
                     'stock_apres'   => 0,
-
-                    // Valeur de la vente (impact sur solde_apres_fixing)
                     'total_facture' => (float) ($calcul['total_facture'] ?? 0),
                 ];
             });
 
         // 🔹 Fusion chronologique
-        $chronologique = $operations->concat($fixings)
-            ->sortBy('date')
-            ->values();
+        $chronologique = $operations->concat($fixings)->sortBy('date')->values();
 
-        // 🔹 Calculs progressifs
+        // 🔹 Calculs progressifs (solde & stock)
         $soldes = [];
         $stocks = [];
 
         foreach ($chronologique as &$ligne) {
             $symbole = $ligne['devise'] ?? 'gnf';
 
-            // === ARGENT ===
-            if (! isset($soldes[$symbole])) {
-                $soldes[$symbole] = 0;
-            }
+            // Initialisation
+            $soldes[$symbole] = $soldes[$symbole] ?? 0;
+            $stocks[$symbole] = $stocks[$symbole] ?? 0;
 
-            // Mouvements financiers
+            // 🔸 Mise à jour du solde
             $soldes[$symbole] += $ligne['credit'] - $ligne['debit'];
             $ligne['solde_apres'] = round($soldes[$symbole], 2);
 
-            // === OR ===
-            if (! isset($stocks[$symbole])) {
-                $stocks[$symbole] = 0;
+            // 🔸 Si c’est un fixing → impacte le solde global
+            if ($ligne['type'] === 'fixing') {
+                $soldes[$symbole] -= (float) $ligne['total_facture'];
             }
 
+            $ligne['solde_apres_fixing'] = round($soldes[$symbole], 2);
+
+            // 🔸 Gestion du stock (pour les ventes d’or)
             if ($ligne['type'] === 'fixing') {
                 $stocks[$symbole] -= $ligne['poids_sortie'];
             }
-            $ligne['stock_apres'] = round($stocks[$symbole], 3);
 
-            // === Solde après fixing (impact de la facture) ===
-            if ($ligne['type'] === 'fixing' && isset($ligne['total_facture'])) {
-                $soldes[$symbole] -= $ligne['total_facture']; // sortie argent après vente
-            }
-            $ligne['solde_apres_fixing'] = round($soldes[$symbole], 2);
+            $ligne['stock_apres'] = round($stocks[$symbole], 3);
         }
 
-        // 🔁 Tri décroissant (plus récent en premier)
+        // 🔁 Tri décroissant
         $chronologique = $chronologique->sortByDesc('date')->values();
 
         return [
