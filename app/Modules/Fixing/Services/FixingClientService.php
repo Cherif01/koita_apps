@@ -174,55 +174,58 @@ class FixingClientService
     /**
      * 📊 Calculer la facture d’un fixing
      */
-    public function calculerFacture(int $id_fixing): array
-    {
-        $fixing = FixingClient::with('client')->find($id_fixing);
+   public function calculerFacture(int $id_fixing): array
+{
+    $fixing = FixingClient::with('client')->find($id_fixing);
 
-        if (! $fixing) {
-            return [
-                'status'  => 404,
-                'message' => "Fixing introuvable avec l’ID {$id_fixing}.",
-            ];
-        }
+    if (! $fixing) {
+        return [
+            'status'  => 404,
+            'message' => "Fixing introuvable avec l’ID {$id_fixing}.",
+        ];
+    }
 
-        $poidsPro   = (float) $fixing->poids_pro;
-        $caratMoyen = (float) $fixing->carrat_moyen;
-        $bourse     = (float) $fixing->bourse;
-        $discompte  = (float) $fixing->discompte;
-        $typeClient = $fixing->client?->type_client ?? 'local';
+    $poidsPro   = (float) $fixing->poids_pro;
+    $bourse     = (float) $fixing->bourse;
+    $discompte  = (float) ($fixing->discompte ?? 0);
+    $typeClient = $fixing->client?->type_client ?? 'local';
 
-        // 💎 Pureté = (poids_pro × carat_moyen) / 24
-        $pureteTotale = ($poidsPro ) / 24;
+    // 💎 Pureté (ici on ne prend plus le carat)
+    $pureteTotale = $poidsPro ;
 
-        // 💰 Calcul du prix unitaire
+    // 💰 Si le fixing est vendu → calcul normal
+    if ($fixing->status === 'vendu') {
         $prixUnitaire = $typeClient === 'local'
             ? ($bourse / 34) - $discompte
             : ($bourse / 31.10347) - (32 * $discompte);
 
         $totalFacture = $pureteTotale * $prixUnitaire;
-
-        // Arrondis
-        return [
-            'id_fixing'     => $fixing->id,
-            'type_client'   => $typeClient,
-            'poids_total'   => round($poidsPro, 2),
-            
-            'bourse'        => round($bourse, 2),
-            'discompte'     => round($discompte, 2),
-            'purete_totale' => round($pureteTotale, 2),
-            'prix_unitaire' => round($prixUnitaire, 2),
-            'total_facture' => round($totalFacture, 2),
-        ];
+    } 
+    // ⚠️ Sinon (provisoire) → pas de calcul, mais on garde les mêmes clés
+    else {
+        $prixUnitaire = 0;
+        $totalFacture = 0;
     }
+
+    return [
+        'status'        => 200,
+        'id_fixing'     => $fixing->id,
+        'status_fixing' => $fixing->status,
+        'type_client'   => $typeClient,
+        'poids_total'   => round($poidsPro, 2),
+        'bourse'        => round($bourse, 2),
+        'discompte'     => round($discompte, 2),
+        'purete_totale' => round($pureteTotale, 2),
+        'prix_unitaire' => round($prixUnitaire, 2),
+        'total_facture' => round($totalFacture, 2),
+    ];
+}
+
 
     /**
      * ⚙️ Tronquer un nombre sans arrondir
      */
-    private function truncate(float $value, int $decimals = 2): float
-    {
-        $factor = pow(10, $decimals);
-        return floor($value * $factor) / $factor;
-    }
+   
 
     /**
      * 📈 Statistiques globales des fixings
