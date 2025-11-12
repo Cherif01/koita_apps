@@ -977,6 +977,9 @@ class ClientService
                 $total  = (float) ($calc['total_facture'] ?? 0.0);
                 $poids  = (float) ($calc['poids_total'] ?? 0.0);
                 $prixU  = (float) ($calc['prix_unitaire'] ?? 0.0);
+                $discompte  = (float) ($calc['discompte'] ?? 0.0);
+                 $bourse = (float) ($calc['bourse'] ?? 0.0);
+
 
                 return [
                     'type'                => 'fixing',
@@ -992,7 +995,7 @@ class ClientService
                     'solde_apres'         => 0.0,
                     'solde_apres_fixing'  => 0.0,
                     'reference_fixing'    => 'FIX-' . str_pad($fix->id, 5, '0', STR_PAD_LEFT),
-                    'libelle_fixing'      => "Vente or : {$poids} g à {$prixU} /g",
+                    'libelle_fixing'      => "Vente or : {$poids} g à {$prixU} /g {$discompte} {$bourse}",
                     'poids_entree'  => 0.0,
                     'poids_sortie'  => $poids,
                     'stock_avant'   => 0.0,
