@@ -1098,171 +1098,337 @@ class ClientService
     //         'stock_final'            => round($stockGlobal, 3),
     //     ];
     // }
+    // public function getReleveClient(int $id_client): array
+    // {
+    //     // 🔹 1. Récupérer toutes les devises actives
+    //     $devises = Devise::pluck('symbole')
+    //         ->map(fn($s) => strtolower($s))
+    //         ->unique()
+    //         ->values()
+    //         ->all();
+
+    //     // 🔹 2. Récupérer les opérations financières
+    //     $operations = OperationClient::with(['typeOperation', 'devise', 'compte.banque'])
+    //         ->where('id_client', $id_client)
+    //         ->orderBy('created_at', 'asc')
+    //         ->get()
+    //         ->map(function ($op) {
+    //             $nature = (int) ($op->typeOperation?->nature ?? 0);
+    //             $devise = strtolower($op->devise?->symbole ?? 'gnf');
+
+    //             return [
+    //                 'type'                => 'operation',
+    //                 'date'                => $op->created_at?->format('Y-m-d H:i:s'),
+    //                 'reference_operation' => $op->reference,
+    //                 'libelle_operation'   => $op->typeOperation?->libelle ?? 'Opération client',
+    //                 'banque'              => $op->compte?->banque?->libelle ?? null,
+    //                 'numero_compte'       => $op->compte?->numero_compte ?? null,
+    //                 'devise'              => $devise,
+    //                 'debit'               => $nature === 0 ? (float) $op->montant : 0.0,
+    //                 'credit'              => $nature === 1 ? (float) $op->montant : 0.0,
+    //                 'solde_avant'         => 0.0,
+    //                 'solde_apres'         => 0.0,
+    //                 'solde_apres_fixing'  => 0.0,
+    //                 'reference_fixing'    => null,
+    //                 'libelle_fixing'      => null,
+    //                 'poids_entree'        => 0.0,
+    //                 'poids_sortie'        => 0.0,
+    //                 'stock_avant'         => 0.0,
+    //                 'stock_apres'         => 0.0,
+    //                 'total_facture'       => 0.0,
+    //             ];
+    //         });
+
+    //     // 🔹 3. Récupérer les fixings
+    //     $fixings = FixingClient::with(['devise'])
+    //         ->where('id_client', $id_client)
+    //         ->whereIn('status', ['vendu', 'provisoire'])
+    //         ->orderBy('created_at', 'asc')
+    //         ->get()
+    //         ->map(function ($fix) {
+    //             $calc      = app(FixingClientService::class)->calculerFacture($fix->id);
+    //             $devise    = strtolower($fix->devise?->symbole ?? 'gnf');
+    //             $total     = (float) ($calc['total_facture'] ?? 0.0);
+    //             $poids     = (float) ($calc['poids_total'] ?? 0.0);
+    //             $prixU     = (float) ($calc['prix_unitaire'] ?? 0.0);
+    //             $discompte = (float) ($calc['discompte'] ?? 0.0);
+    //             $bourse    = (float) ($calc['bourse'] ?? 0.0);
+
+    //             return [
+    //                 'type'                => 'fixing',
+    //                 'date'                => $fix->created_at?->format('Y-m-d H:i:s'),
+    //                 'reference_operation' => null,
+    //                 'libelle_operation'   => null,
+    //                 'banque'              => null,
+    //                 'numero_compte'       => null,
+    //                 'devise'              => $devise,
+    //                 'debit'               => $total,
+    //                 'credit'              => 0.0,
+    //                 'solde_avant'         => 0.0,
+    //                 'solde_apres'         => 0.0,
+    //                 'solde_apres_fixing'  => 0.0,
+    //                 'reference_fixing'    => 'FIX-' . str_pad($fix->id, 5, '0', STR_PAD_LEFT),
+    //                 'libelle_fixing'      => "Vente or : {$poids} g à {$prixU} /g Discompte:{$discompte}, Bourse: {$bourse}",
+    //                 'poids_entree'  => 0.0,
+    //                 'poids_sortie'  => $poids,
+    //                 'stock_avant'   => 0.0,
+    //                 'stock_apres'   => 0.0,
+    //                 'total_facture' => $total,
+    //             ];
+    //         });
+
+    //     // 🔹 4. Récupérer les livraisons
+    //     $livraisons = InitLivraison::where('id_client', $id_client)
+    //         ->orderBy('created_at', 'asc')
+    //         ->get()
+    //         ->map(function ($livraison) {
+    //             $poidsFondus = Fondation::whereHas('expedition', function ($q) use ($livraison) {
+    //                 $q->where('id_init_livraison', $livraison->id);
+    //             })->sum('poids_fondu');
+
+    //             return [
+    //                 'type'                => 'livraison',
+    //                 'date'                => $livraison->created_at?->format('Y-m-d H:i:s'),
+    //                 'reference_operation' => $livraison->reference ?? null,
+    //                 'libelle_operation'   => 'Livraison d’or',
+    //                 'banque'              => null,
+    //                 'numero_compte'       => null,
+    //                 'devise'              => 'usd',
+    //                 'debit'               => 0.0,
+    //                 'credit'              => 0.0,
+    //                 'solde_avant'         => 0.0,
+    //                 'solde_apres'         => 0.0,
+    //                 'solde_apres_fixing'  => 0.0,
+    //                 'reference_fixing'    => null,
+    //                 'libelle_fixing'      => null,
+    //                 'poids_entree'        => (float) $poidsFondus,
+    //                 'poids_sortie'        => 0.0,
+    //                 'stock_avant'         => 0.0,
+    //                 'stock_apres'         => 0.0,
+    //                 'total_facture'       => 0.0,
+    //             ];
+    //         });
+
+    //     // 🔹 5. Fusion complète dans l’ordre chronologique croissant (par défaut)
+    //     $rows = $operations->concat($fixings)->concat($livraisons)->sortBy('date')->values()->all();
+
+    //     // 🔹 6. Initialisation
+    //     $soldes      = [];
+    //     $grouped     = [];
+    //     $stockGlobal = 0.0; // ⚙️ stock global unique
+
+    //     foreach ($devises as $sym) {
+    //         $soldes[$sym]  = 0.0;
+    //         $grouped[$sym] = [];
+    //     }
+
+    //     // 🔹 7. Calcul chronologique
+    //     foreach ($rows as $ligne) {
+    //         $sym = $ligne['devise'] ?: 'gnf';
+
+    //         if (! isset($grouped[$sym])) {
+    //             $grouped[$sym] = [];
+    //             $soldes[$sym]  = 0.0;
+    //         }
+
+    //         $solde_avant = $soldes[$sym];
+    //         $stock_avant = $stockGlobal;
+
+    //         // 💰 Solde
+    //         $soldes[$sym] += ((float) $ligne['credit'] - (float) $ligne['debit']);
+
+    //         // ⚖️ Stock global partagé
+    //         if ($ligne['type'] === 'fixing') {
+    //             $stockGlobal -= (float) $ligne['poids_sortie'];
+    //         } elseif ($ligne['type'] === 'livraison') {
+    //             $stockGlobal += (float) $ligne['poids_entree'];
+    //         }
+
+    //         $ligne['solde_avant']        = round($solde_avant, 2);
+    //         $ligne['solde_apres']        = round($soldes[$sym], 2);
+    //         $ligne['solde_apres_fixing'] = round($soldes[$sym], 2);
+    //         $ligne['stock_avant']        = round($stock_avant, 3);
+    //         $ligne['stock_apres']        = round($stockGlobal, 3);
+
+    //         $grouped[$sym][] = $ligne;
+    //     }
+
+    //     // ❌ Aucun tri supplémentaire ici — on garde l’ordre naturel chronologique (ASC)
+
+    //     // 🔹 8. Retour final
+    //     return [
+    //         'status'                 => 200,
+    //         'message'                => 'Relevé combiné généré avec succès.',
+    //         'operations_financieres' => (object) $grouped,
+    //         'stock_final'            => round($stockGlobal, 3),
+    //     ];
+    // }
     public function getReleveClient(int $id_client): array
-    {
-        // 🔹 1. Récupérer toutes les devises actives
-        $devises = Devise::pluck('symbole')
-            ->map(fn($s) => strtolower($s))
-            ->unique()
-            ->values()
-            ->all();
+{
+    // 🔹 1. Récupérer toutes les devises actives
+    $devises = Devise::pluck('symbole')
+        ->map(fn($s) => strtolower($s))
+        ->unique()
+        ->values()
+        ->all();
 
-        // 🔹 2. Récupérer les opérations financières
-        $operations = OperationClient::with(['typeOperation', 'devise', 'compte.banque'])
-            ->where('id_client', $id_client)
-            ->orderBy('created_at', 'asc')
-            ->get()
-            ->map(function ($op) {
-                $nature = (int) ($op->typeOperation?->nature ?? 0);
-                $devise = strtolower($op->devise?->symbole ?? 'gnf');
+    // 🔹 2. Récupérer les opérations financières
+    $operations = OperationClient::with(['typeOperation', 'devise', 'compte.banque'])
+        ->where('id_client', $id_client)
+        ->orderBy('created_at', 'asc')
+        ->get()
+        ->map(function ($op) {
+            $nature = (int) ($op->typeOperation?->nature ?? 0);
+            $devise = strtolower($op->devise?->symbole ?? 'gnf');
 
-                return [
-                    'type'                => 'operation',
-                    'date'                => $op->created_at?->format('Y-m-d H:i:s'),
-                    'reference_operation' => $op->reference,
-                    'libelle_operation'   => $op->typeOperation?->libelle ?? 'Opération client',
-                    'banque'              => $op->compte?->banque?->libelle ?? null,
-                    'numero_compte'       => $op->compte?->numero_compte ?? null,
-                    'devise'              => $devise,
-                    'debit'               => $nature === 0 ? (float) $op->montant : 0.0,
-                    'credit'              => $nature === 1 ? (float) $op->montant : 0.0,
-                    'solde_avant'         => 0.0,
-                    'solde_apres'         => 0.0,
-                    'solde_apres_fixing'  => 0.0,
-                    'reference_fixing'    => null,
-                    'libelle_fixing'      => null,
-                    'poids_entree'        => 0.0,
-                    'poids_sortie'        => 0.0,
-                    'stock_avant'         => 0.0,
-                    'stock_apres'         => 0.0,
-                    'total_facture'       => 0.0,
-                ];
-            });
+            return [
+                'type'                => 'operation',
+                'date'                => $op->created_at?->format('Y-m-d H:i:s'),
+                'reference_operation' => $op->reference,
+                'libelle_operation'   => $op->typeOperation?->libelle ?? 'Opération client',
+                'banque'              => $op->compte?->banque?->libelle ?? null,
+                'numero_compte'       => $op->compte?->numero_compte ?? null,
+                'devise'              => $devise,
+                'debit'               => $nature === 0 ? (float) $op->montant : 0.0,
+                'credit'              => $nature === 1 ? (float) $op->montant : 0.0,
+                'solde_avant'         => 0.0,
+                'solde_apres'         => 0.0,
+                'solde_apres_fixing'  => 0.0,
+                'reference_fixing'    => null,
+                'libelle_fixing'      => null,
+                'poids_entree'        => 0.0,
+                'poids_sortie'        => 0.0,
+                'stock_avant'         => 0.0,
+                'stock_apres'         => 0.0,
+                'total_facture'       => 0.0,
+            ];
+        });
 
-        // 🔹 3. Récupérer les fixings
-        $fixings = FixingClient::with(['devise'])
-            ->where('id_client', $id_client)
-            ->whereIn('status', ['vendu', 'provisoire'])
-            ->orderBy('created_at', 'asc')
-            ->get()
-            ->map(function ($fix) {
-                $calc      = app(FixingClientService::class)->calculerFacture($fix->id);
-                $devise    = strtolower($fix->devise?->symbole ?? 'gnf');
-                $total     = (float) ($calc['total_facture'] ?? 0.0);
-                $poids     = (float) ($calc['poids_total'] ?? 0.0);
-                $prixU     = (float) ($calc['prix_unitaire'] ?? 0.0);
-                $discompte = (float) ($calc['discompte'] ?? 0.0);
-                $bourse    = (float) ($calc['bourse'] ?? 0.0);
+    // 🔹 3. Récupérer les fixings
+    $fixings = FixingClient::with(['devise'])
+        ->where('id_client', $id_client)
+        ->whereIn('status', ['vendu', 'provisoire'])
+        ->orderBy('created_at', 'asc')
+        ->get()
+        ->map(function ($fix) {
+            $calc      = app(FixingClientService::class)->calculerFacture($fix->id);
+            $devise    = strtolower($fix->devise?->symbole ?? 'gnf');
+            $total     = (float) ($calc['total_facture'] ?? 0.0);
+            $poids     = (float) ($calc['poids_total'] ?? 0.0);
+            $prixU     = (float) ($calc['prix_unitaire'] ?? 0.0);
+            $discompte = (float) ($fix->discompte ?? 0.0);
+            $bourse    = (float) ($fix->bourse ?? 0.0);
 
-                return [
-                    'type'                => 'fixing',
-                    'date'                => $fix->created_at?->format('Y-m-d H:i:s'),
-                    'reference_operation' => null,
-                    'libelle_operation'   => null,
-                    'banque'              => null,
-                    'numero_compte'       => null,
-                    'devise'              => $devise,
-                    'debit'               => $total,
-                    'credit'              => 0.0,
-                    'solde_avant'         => 0.0,
-                    'solde_apres'         => 0.0,
-                    'solde_apres_fixing'  => 0.0,
-                    'reference_fixing'    => 'FIX-' . str_pad($fix->id, 5, '0', STR_PAD_LEFT),
-                    'libelle_fixing'      => "Vente or : {$poids} g à {$prixU} /g Discompte:{$discompte}, Bourse: {$bourse}",
-                    'poids_entree'  => 0.0,
-                    'poids_sortie'  => $poids,
-                    'stock_avant'   => 0.0,
-                    'stock_apres'   => 0.0,
-                    'total_facture' => $total,
-                ];
-            });
+            return [
+                'type'                => 'fixing',
+                'date'                => $fix->created_at?->format('Y-m-d H:i:s'),
+                'reference_operation' => null,
+                'libelle_operation'   => null,
+                'banque'              => null,
+                'numero_compte'       => null,
+                'devise'              => $devise,
+                'debit'               => $total,
+                'credit'              => 0.0,
+                'solde_avant'         => 0.0,
+                'solde_apres'         => 0.0,
+                'solde_apres_fixing'  => 0.0,
+                'reference_fixing'    => 'FIX-' . str_pad($fix->id, 5, '0', STR_PAD_LEFT),
+                'libelle_fixing'      => "Vente or : {$poids} g à {$prixU} /g Discompte:{$discompte}, Bourse: {$bourse}",
+                'poids_entree'        => 0.0,
+                'poids_sortie'        => $poids,
+                'stock_avant'         => 0.0,
+                'stock_apres'         => 0.0,
+                'total_facture'       => $total,
+            ];
+        });
 
-        // 🔹 4. Récupérer les livraisons
-        $livraisons = InitLivraison::where('id_client', $id_client)
-            ->orderBy('created_at', 'asc')
-            ->get()
-            ->map(function ($livraison) {
-                $poidsFondus = Fondation::whereHas('expedition', function ($q) use ($livraison) {
-                    $q->where('id_init_livraison', $livraison->id);
-                })->sum('poids_fondu');
+    // 🔹 4. Récupérer les livraisons
+    $livraisons = InitLivraison::where('id_client', $id_client)
+        ->orderBy('created_at', 'asc')
+        ->get()
+        ->map(function ($livraison) {
+            $poidsFondus = Fondation::whereHas('expedition', function ($q) use ($livraison) {
+                $q->where('id_init_livraison', $livraison->id);
+            })->sum('poids_fondu');
 
-                return [
-                    'type'                => 'livraison',
-                    'date'                => $livraison->created_at?->format('Y-m-d H:i:s'),
-                    'reference_operation' => $livraison->reference ?? null,
-                    'libelle_operation'   => 'Livraison d’or',
-                    'banque'              => null,
-                    'numero_compte'       => null,
-                    'devise'              => 'usd',
-                    'debit'               => 0.0,
-                    'credit'              => 0.0,
-                    'solde_avant'         => 0.0,
-                    'solde_apres'         => 0.0,
-                    'solde_apres_fixing'  => 0.0,
-                    'reference_fixing'    => null,
-                    'libelle_fixing'      => null,
-                    'poids_entree'        => (float) $poidsFondus,
-                    'poids_sortie'        => 0.0,
-                    'stock_avant'         => 0.0,
-                    'stock_apres'         => 0.0,
-                    'total_facture'       => 0.0,
-                ];
-            });
+            return [
+                'type'                => 'livraison',
+                'date'                => $livraison->created_at?->format('Y-m-d H:i:s'),
+                'reference_operation' => $livraison->reference ?? null,
+                'libelle_operation'   => 'Livraison d’or',
+                'banque'              => null,
+                'numero_compte'       => null,
+                'devise'              => 'usd', // 🔸 Pas liée à la devise
+                'debit'               => 0.0,
+                'credit'              => 0.0,
+                'solde_avant'         => 0.0,
+                'solde_apres'         => 0.0,
+                'solde_apres_fixing'  => 0.0,
+                'reference_fixing'    => null,
+                'libelle_fixing'      => null,
+                'poids_entree'        => (float) $poidsFondus,
+                'poids_sortie'        => 0.0,
+                'stock_avant'         => 0.0,
+                'stock_apres'         => 0.0,
+                'total_facture'       => 0.0,
+            ];
+        });
 
-        // 🔹 5. Fusion complète dans l’ordre chronologique croissant (par défaut)
-        $rows = $operations->concat($fixings)->concat($livraisons)->sortBy('date')->values()->all();
+    // 🔹 5. Fusion complète dans l’ordre chronologique croissant (ASC)
+    $rows = $operations->concat($fixings)->concat($livraisons)->sortBy('date')->values()->all();
 
-        // 🔹 6. Initialisation
-        $soldes      = [];
-        $grouped     = [];
-        $stockGlobal = 0.0; // ⚙️ stock global unique
+    // 🔹 6. Initialisation
+    $soldes      = [];
+    $grouped     = [];
+    $stockGlobal = 0.0; // Stock global unique pour toutes les opérations
 
-        foreach ($devises as $sym) {
-            $soldes[$sym]  = 0.0;
-            $grouped[$sym] = [];
-        }
-
-        // 🔹 7. Calcul chronologique
-        foreach ($rows as $ligne) {
-            $sym = $ligne['devise'] ?: 'gnf';
-
-            if (! isset($grouped[$sym])) {
-                $grouped[$sym] = [];
-                $soldes[$sym]  = 0.0;
-            }
-
-            $solde_avant = $soldes[$sym];
-            $stock_avant = $stockGlobal;
-
-            // 💰 Solde
-            $soldes[$sym] += ((float) $ligne['credit'] - (float) $ligne['debit']);
-
-            // ⚖️ Stock global partagé
-            if ($ligne['type'] === 'fixing') {
-                $stockGlobal -= (float) $ligne['poids_sortie'];
-            } elseif ($ligne['type'] === 'livraison') {
-                $stockGlobal += (float) $ligne['poids_entree'];
-            }
-
-            $ligne['solde_avant']        = round($solde_avant, 2);
-            $ligne['solde_apres']        = round($soldes[$sym], 2);
-            $ligne['solde_apres_fixing'] = round($soldes[$sym], 2);
-            $ligne['stock_avant']        = round($stock_avant, 3);
-            $ligne['stock_apres']        = round($stockGlobal, 3);
-
-            $grouped[$sym][] = $ligne;
-        }
-
-        // ❌ Aucun tri supplémentaire ici — on garde l’ordre naturel chronologique (ASC)
-
-        // 🔹 8. Retour final
-        return [
-            'status'                 => 200,
-            'message'                => 'Relevé combiné généré avec succès.',
-            'operations_financieres' => (object) $grouped,
-            'stock_final'            => round($stockGlobal, 3),
-        ];
+    foreach ($devises as $sym) {
+        $soldes[$sym]  = 0.0;
+        $grouped[$sym] = [];
     }
+
+    // 🔹 7. Calcul chronologique (du plus ancien au plus récent)
+    foreach ($rows as $ligne) {
+        $sym = $ligne['devise'] ?: 'gnf';
+
+        if (! isset($grouped[$sym])) {
+            $grouped[$sym] = [];
+            $soldes[$sym]  = 0.0;
+        }
+
+        $solde_avant = $soldes[$sym];
+        $stock_avant = $stockGlobal;
+
+        // 💰 Solde
+        $soldes[$sym] += ((float) $ligne['credit'] - (float) $ligne['debit']);
+
+        // ⚖️ Stock global partagé
+        if ($ligne['type'] === 'fixing') {
+            $stockGlobal -= (float) $ligne['poids_sortie'];
+        } elseif ($ligne['type'] === 'livraison') {
+            $stockGlobal += (float) $ligne['poids_entree'];
+        }
+
+        $ligne['solde_avant']        = round($solde_avant, 2);
+        $ligne['solde_apres']        = round($soldes[$sym], 2);
+        $ligne['solde_apres_fixing'] = round($soldes[$sym], 2);
+        $ligne['stock_avant']        = round($stock_avant, 3);
+        $ligne['stock_apres']        = round($stockGlobal, 3);
+
+        $grouped[$sym][] = $ligne;
+    }
+
+    // 🔹 8. Aucun tri supplémentaire : on garde l’ordre naturel (ASC)
+    // Les lignes sont déjà triées du plus ancien au plus récent
+
+    return [
+        'status'                 => 200,
+        'message'                => 'Relevé combiné généré avec succès.',
+        'operations_financieres' => (object) $grouped,
+        'stock_final'            => round($stockGlobal, 3),
+    ];
+}
+
 
     public function calculerStockClient(int $id_client): array
     {
