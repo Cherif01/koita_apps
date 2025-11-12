@@ -788,20 +788,20 @@ class ClientService
     // }
     public function getReleveClient(int $id_client): array
     {
-        // 🔹 1. Récupérer les devises actives
+        // 🔹 1. Récupérer toutes les devises actives pour pré-créer les clés
         $devises = Devise::pluck('symbole')
             ->map(fn($s) => strtolower($s))
             ->unique()
             ->values()
             ->all();
 
-        // 🔹 2. Récupérer les opérations
+        // 🔹 2. Récupérer les opérations financières du client
         $operations = OperationClient::with(['typeOperation', 'devise', 'compte.banque'])
             ->where('id_client', $id_client)
             ->orderBy('created_at', 'asc')
             ->get()
             ->map(function ($op) {
-                $nature = (int) ($op->typeOperation?->nature ?? 0);
+                $nature = (int) ($op->typeOperation?->nature ?? 0); // 1 = entrée, 0 = sortie
                 $devise = strtolower($op->devise?->symbole ?? 'gnf');
 
                 return [
@@ -821,7 +821,6 @@ class ClientService
                     'libelle_fixing'      => null,
                     'poids_entree'        => 0.0,
                     'poids_sortie'        => 0.0,
-                    'stock_avant'         => 0.0,
                     'stock_apres'         => 0.0,
                     'total_facture'       => 0.0,
                 ];
@@ -848,7 +847,7 @@ class ClientService
                     'banque'              => null,
                     'numero_compte'       => null,
                     'devise'              => $devise,
-                    'debit'               => $total,
+                    'debit'               => $total, // Fixing = sortie
                     'credit'              => 0.0,
                     'solde_avant'         => 0.0,
                     'solde_apres'         => 0.0,
@@ -857,99 +856,71 @@ class ClientService
                     'libelle_fixing'      => "Vente or : {$poids} g à {$prixU} /g",
                     'poids_entree'  => 0.0,
                     'poids_sortie'  => $poids,
-                    'stock_avant'   => 0.0,
                     'stock_apres'   => 0.0,
                     'total_facture' => $total,
                 ];
             });
 
-        // 🔹 4. Récupérer les livraisons
-        $livraisons = InitLivraison::where('id_client', $id_client)
-            ->orderBy('created_at', 'asc')
-            ->get()
-            ->map(function ($liv) {
-                $poids = (float) ($liv->poids_total ?? 0.0);
-                return [
-                    'type'                => 'livraison',
-                    'date'                => $liv->created_at?->format('Y-m-d H:i:s'),
-                    'reference_operation' => $liv->reference ?? null,
-                    'libelle_operation'   => 'Livraison d’or',
-                    'banque'              => null,
-                    'numero_compte'       => null,
-                    'devise'              => 'gnf',
-                    'debit'               => 0.0,
-                    'credit'              => 0.0,
-                    'solde_avant'         => 0.0,
-                    'solde_apres'         => 0.0,
-                    'solde_apres_fixing'  => 0.0,
-                    'reference_fixing'    => null,
-                    'libelle_fixing'      => null,
-                    'poids_entree'        => $poids,
-                    'poids_sortie'        => 0.0,
-                    'stock_avant'         => 0.0,
-                    'stock_apres'         => 0.0,
-                    'total_facture'       => 0.0,
-                ];
-            });
+        // 🔹 4. Fusion chronologique
+        $rows = $operations->concat($fixings)->sortBy('date')->values()->all();
 
-        // 🔹 5. Fusion complète (opérations + fixings + livraisons)
-        $rows = $operations->concat($fixings)->concat($livraisons)->sortBy('date')->values()->all();
+        // 🔹 5. Initialisation des soldes et regroupements
+        $soldes  = [];
+        $stocks  = [];
+        $grouped = [];
 
-        // 🔹 6. Initialisation
-        $soldes      = [];
-        $grouped     = [];
-        $stockGlobal = 0.0; // ⚙️ Un seul stock global partagé
-
+        // Pré-crée toutes les devises (même si aucune opération)
         foreach ($devises as $sym) {
             $soldes[$sym]  = 0.0;
+            $stocks[$sym]  = 0.0;
             $grouped[$sym] = [];
         }
 
-        // 🔹 7. Calculs
+        // 🔹 6. Boucle principale de calcul
         foreach ($rows as $ligne) {
             $sym = $ligne['devise'] ?: 'gnf';
 
+            // Si une nouvelle devise apparaît, on l’ajoute
             if (! isset($grouped[$sym])) {
                 $grouped[$sym] = [];
                 $soldes[$sym]  = 0.0;
+                $stocks[$sym]  = 0.0;
             }
 
+            // 1️⃣ Solde avant
             $solde_avant = $soldes[$sym];
-            $stock_avant = $stockGlobal;
 
-            // 💰 Gestion du solde monétaire
+            // 2️⃣ Application de l’opération
             $soldes[$sym] += ((float) $ligne['credit'] - (float) $ligne['debit']);
 
-            // ⚖️ Gestion du stock global
-            if ($ligne['type'] === 'fixing') {
-                $stockGlobal -= (float) $ligne['poids_sortie'];
-            } elseif ($ligne['type'] === 'livraison') {
-                $stockGlobal += (float) $ligne['poids_entree'];
-            }
-
-            // 🔁 Mise à jour des valeurs
+            // 3️⃣ Mise à jour des champs
             $ligne['solde_avant']        = round($solde_avant, 2);
             $ligne['solde_apres']        = round($soldes[$sym], 2);
             $ligne['solde_apres_fixing'] = round($soldes[$sym], 2);
-            $ligne['stock_avant']        = round($stock_avant, 3);
-            $ligne['stock_apres']        = round($stockGlobal, 3);
 
+            // 4️⃣ Gestion du stock
+            if ($ligne['type'] === 'fixing') {
+                $stocks[$sym] -= (float) $ligne['poids_sortie'];
+            }
+
+            $ligne['stock_apres'] = round($stocks[$sym], 3);
+
+            // 5️⃣ Ajout dans la devise correspondante
             $grouped[$sym][] = $ligne;
         }
 
-        // 🔹 8. Tri décroissant par devise
+        // 🔹 7. Tri décroissant pour chaque devise
         foreach ($grouped as $dev => &$ops) {
             usort($ops, fn($a, $b) => strcmp($b['date'], $a['date']));
             $ops = array_values($ops);
         }
         unset($ops);
 
-        // 🔹 9. Retour final
+        // 🔹 8. Retour final (objet par devise)
         return [
             'status'                 => 200,
             'message'                => 'Relevé combiné généré avec succès.',
-            'operations_financieres' => (object) $grouped,
-            'stock_final'            => round($stockGlobal, 3), // ✅ visible globalement
+            'operations_financieres' => (object) $grouped, // ✅ clé = devise (jamais [])
         ];
     }
 
