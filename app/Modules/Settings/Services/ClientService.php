@@ -703,7 +703,7 @@ class ClientService
                     'banque'              => null,
                     'numero_compte'       => null,
                     'devise'              => $devise,
-                    'debit'               => $total, // ✅ sortie directe
+                    'debit'               => $total, // sortie
                     'credit'              => 0.0,
                     'solde_avant'         => 0.0,
                     'solde_apres'         => 0.0,
@@ -717,7 +717,7 @@ class ClientService
                 ];
             });
 
-        // 🔹 Fusion et tri
+        // 🔹 Fusion chronologique (ASC)
         $rows = $operations->concat($fixings)->sortBy('date')->values()->all();
 
         // 🔹 Cumul par devise
@@ -729,13 +729,13 @@ class ClientService
             $soldes[$sym] = $soldes[$sym] ?? 0.0;
             $stocks[$sym] = $stocks[$sym] ?? 0.0;
 
-            // ✅ solde avant
+            // solde avant
             $solde_avant = $soldes[$sym];
 
-            // ✅ application de l’opération
+            // application de l’opération (entrée - sortie)
             $soldes[$sym] += ((float) $rows[$i]['credit'] - (float) $rows[$i]['debit']);
 
-            // ✅ mise à jour des valeurs
+            // mise à jour des champs
             $rows[$i]['solde_avant']        = round($solde_avant, 2);
             $rows[$i]['solde_apres']        = round($soldes[$sym], 2);
             $rows[$i]['solde_apres_fixing'] = round($soldes[$sym], 2);
@@ -743,29 +743,33 @@ class ClientService
             if ($rows[$i]['type'] === 'fixing') {
                 $stocks[$sym] -= (float) $rows[$i]['poids_sortie'];
             }
-
             $rows[$i]['stock_apres'] = round($stocks[$sym], 3);
         }
 
-        // 🔁 Regroupement des opérations par devise
+        // 🔁 Regroupement par devise → OBJET ASSOCIATIF
         $groupedByDevise = [];
         foreach ($rows as $ligne) {
-            $devise = $ligne['devise'];
-            if (! isset($groupedByDevise[$devise])) {
-                $groupedByDevise[$devise] = [];
+            $d = $ligne['devise'];
+            if (! isset($groupedByDevise[$d])) {
+                $groupedByDevise[$d] = [];
             }
-            $groupedByDevise[$devise][] = $ligne;
+            $groupedByDevise[$d][] = $ligne;
         }
 
         // 🔁 Tri décroissant dans chaque devise
         foreach ($groupedByDevise as $dev => &$liste) {
             usort($liste, fn($a, $b) => strcmp($b['date'], $a['date']));
+            $liste = array_values($liste); // réindexer proprement
         }
+
+        // ⚠️ Important : caster en objet pour forcer JSON à produire un {}
+        // et non un [] quand c'est vide (sinon ton agrégateur met "[]")
+        $operations_par_devise = (object) $groupedByDevise;
 
         return [
             'status'                 => 200,
             'message'                => 'Relevé combiné généré avec succès.',
-            'operations_financieres' => $groupedByDevise, // ✅ clé = symbole devise
+            'operations_financieres' => $operations_par_devise, // ← objet { "usd": [...], "gnf": [...] }
         ];
     }
 
