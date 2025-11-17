@@ -1,13 +1,12 @@
 <?php
-
 namespace App\Modules\Fixing\Models;
 
+use App\Modules\Administration\Models\User;
+use App\Modules\Fondation\Models\Fondation;
+use App\Modules\Settings\Models\Client;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use App\Modules\Settings\Models\Client;
-use App\Modules\Administration\Models\User;
-use App\Modules\Fondation\Models\Fondation;
 
 class InitLivraison extends Model
 {
@@ -59,7 +58,7 @@ class InitLivraison extends Model
     {
         return $this->hasMany(Expedition::class, 'id_init_livraison');
     }
- public function fondations()
+    public function fondations()
     {
         return $this->hasManyThrough(
             Fondation::class,
@@ -70,6 +69,12 @@ class InitLivraison extends Model
             'id_barre_fondu'
         );
     }
+
+    public function fixings()
+    {
+        return $this->hasMany(FixingClient::class, 'id_init_livraison');
+    }
+
     // ==============================
     // 🔹 GÉNÉRATION AUTO DE LA RÉFÉRENCE UNIQUE
     // ==============================

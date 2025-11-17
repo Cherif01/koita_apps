@@ -1,12 +1,12 @@
 <?php
-
 namespace App\Modules\Fixing\Services;
 
 use App\Modules\Fixing\Models\InitLivraison;
+use App\Modules\Fixing\Resources\InitLivraisonFixingResource;
 use App\Modules\Fixing\Resources\InitLivraisonResource;
+use Exception;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use Exception;
 
 class InitLivraisonService
 {
@@ -49,11 +49,11 @@ class InitLivraisonService
     {
         try {
             $livraisons = InitLivraison::with([
-                    'client',
-                    'createur',
-                    'modificateur',
-                    'fondations',
-                ])
+                'client',
+                'createur',
+                'modificateur',
+                'fondations',
+            ])
                 ->orderByDesc('id')
                 ->get();
 
@@ -78,11 +78,11 @@ class InitLivraisonService
     {
         try {
             $livraison = InitLivraison::with([
-                    'client',
-                    'createur',
-                    'modificateur',
-                    'fondations',
-                ])
+                'client',
+                'createur',
+                'modificateur',
+                'fondations',
+            ])
                 ->find($id);
 
             if (! $livraison) {
@@ -141,4 +141,46 @@ class InitLivraisonService
             ]);
         }
     }
+
+/**
+ * 🔹 Récupérer toutes les livraisons d’un client
+ */
+   public function getByClient(int $id_client)
+{
+    try {
+        // 🔹 Récupération des livraisons du client
+        $livraisons = InitLivraison::with([
+                'client',
+                'createur',
+                'modificateur',
+                'fondations',
+            ])
+            ->where('id_client', $id_client)
+            ->orderByDesc('id')
+            ->get();
+
+        // 🔥 Filtrer pour ne garder que les livraisons NON totalement fixées
+        $livraisonsNonFixees = $livraisons->filter(function ($livraison) {
+            $calcul = app(ExpeditionService::class)
+            ->calculerPoidsEtCarat($livraison->id);
+
+            return $calcul['poids_fixing'] < $calcul['purete_totale']; // non totalement fixée
+        });
+
+        return response()->json([
+            'status'  => 200,
+            'message' => 'Livraisons non totalement fixées récupérées avec succès.',
+            'data'    => InitLivraisonFixingResource::collection($livraisonsNonFixees),
+        ]);
+
+    } catch (Exception $e) {
+        return response()->json([
+            'status'  => 500,
+            'message' => 'Erreur lors de la récupération des livraisons du client.',
+            'error'   => $e->getMessage(),
+        ]);
+    }
+}
+
+
 }

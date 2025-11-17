@@ -4,6 +4,7 @@ namespace App\Modules\Fondation\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Modules\Fondation\Requests\UpdateDubaiCorrectionRequest;
+use App\Modules\Fondation\Requests\UpdatePureteCorrectionRequest;
 use App\Modules\Fondation\Services\FondationDubaiService;
 
 class FondationDubaiController extends Controller
@@ -19,4 +20,9 @@ class FondationDubaiController extends Controller
     {
         return $this->fondationDubaiService->updateCorrections($request->validated());
     }
+     public function updatePureteCorrections(UpdatePureteCorrectionRequest $request)
+    {
+        return $this->fondationDubaiService->updatePureteCorrections($request->validated());
+    }
 }
+// UpdatePureteCorrectionRequest

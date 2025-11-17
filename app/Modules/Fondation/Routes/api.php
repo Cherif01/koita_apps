@@ -20,4 +20,6 @@ Route::middleware('auth:sanctum')->prefix('v1/fondations')->group(function () {
         'destroy',
     ]);
      Route::put('dubai/corrections', [FondationDubaiController::class, 'updateCorrections']);
+     Route::put('corrections/purete-dubai', [FondationDubaiController::class, 'updatePureteCorrections']);
+
 });

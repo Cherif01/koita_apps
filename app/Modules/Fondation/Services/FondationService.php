@@ -190,7 +190,7 @@ class FondationService
             ]);
         } catch (Exception $e) {
             return response()->json([
-                'status'  => 500,
+                'stateus'  => 500,
                 'message' => 'Erreur lors de la suppression de la fondation.',
                 'error'   => $e->getMessage(),
             ]);

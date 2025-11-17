@@ -20,6 +20,7 @@ class Fondation extends Model
         'id_init_fondation',
         'statut',
         'poids_fondu',
+        'p_purete',
         'carrat_fondu',
         'poids_dubai',
         'carrat_dubai',

@@ -17,6 +17,7 @@ class FixingClient extends Model
     protected $fillable = [
         'id_client',
         'id_devise',
+        'id_init_livraison',
         'reference',
         'poids_pro',
         'carrat_moyen',
@@ -55,6 +56,11 @@ class FixingClient extends Model
     // ===============================
     // 🔹 SCOPES
     // ===============================
+
+    public function livraison()
+    {
+        return $this->belongsTo(InitLivraison::class, 'id_init_livraison');
+    }
 
     public function scopeVendus($query)
     {

@@ -58,4 +58,47 @@ class FondationDubaiService
         }
     }
 
+    public function updatePureteCorrections(array $payload)
+    {
+        DB::beginTransaction();
+
+        try {
+            $updated = [];
+
+            foreach ($payload['corrections'] as $item) {
+
+                $fondation = Fondation::find($item['id']);
+
+                if ($fondation) {
+
+                    // 🔹 Mise à jour SEULEMENT de p_purete (envoyé dans le payload)
+                    $fondation->update([
+                        'p_purete'  => $item['p_purete'], // 🔥 valeur envoyée
+                        'modify_by' => Auth::id(),
+                    ]);
+
+                    $updated[] = $fondation;
+                }
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'status'  => 200,
+                'message' => 'Corrections de pureté appliquées avec succès.',
+                'total'   => count($updated),
+                'data'    => $updated,
+            ]);
+
+        } catch (Exception $e) {
+            DB::rollBack();
+
+            return response()->json([
+                'status'  => 500,
+                'message' => 'Erreur lors de la mise à jour de la pureté.',
+                'error'   => $e->getMessage(),
+            ], 500);
+        }
+    }
+
 }
