@@ -43,12 +43,12 @@ class FixingResource extends JsonResource
             // Fixing Barre relationship
             'fixing_barres' => FixingBarreResource::collection($this->whenLoaded('fixingBarres')),
 
-            'poids_provisoir' => number_format($poid_fixing, 2),
-            'carrat_provisoir' => number_format($carrat_fixing, 2),
+            'poids_provisoir' => $poid_fixing,
+            'carrat_provisoir' => $carrat_fixing,
 
-            'poids_fixing' => number_format($this->poidsFixing($this->id), 2),
-            'carrat_fixing' => number_format($this->carratFixing($this->id), 2),
-            'montant_total' => number_format($this->montantFixing($this->id), 2),
+            'poids_fixing' => $this->poidsFixing($this->id),
+            'carrat_fixing' => $this->carratFixing($this->id),
+            'montant_total' => $this->montantFixing($this->id),
 
             'discount' => $this->discount ?? null,
             'bourse' => $this->bourse ?? null,
