@@ -34,9 +34,9 @@ class AchatResource extends JsonResource
             'id' => $this->id ?? null,
             'reference' => $this->reference,
             'commentaire' => $this->commentaire,
-            'poids_total' => number_format($poid_total, 3),
-            'carrat_moyenne' => number_format($carratMoy, 3),
-            'pureter_moyenne' => ($poid_total * $carratMoy) / 24,
+            'poids_total' => number_format($poid_total, 2),
+            'carrat_moyenne' => number_format($carratMoy, 2),
+            'pureter_moyenne' => $this->pureterMoyenne($this->id),
             'etat_achat' => $this->etat,
             'achat_status' => $this->status,
             'fixed_achat' => $fixed_achat,
@@ -65,13 +65,13 @@ class AchatResource extends JsonResource
 
             'barres' => $this->barres->map(function ($barre) {
                 $pureter = $this->pureter($barre->poid_pure, $barre->carrat_pure);
-                
+
                 return [
                     'id' => $barre->id ?? null,
                     'poid_pure' => $barre->poid_pure ?? null,
                     'carrat_pure' => $barre->carrat_pure ?? null,
                     'densite' => $barre->densite ?? null,
-                    'pureter' => number_format($pureter, 3),
+                    'pureter' => number_format($pureter, 2),
                     'barre_status' => $barre->status ?? null,
                     'is_fixed' => $barre->is_fixed,
                 ];
