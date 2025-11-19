@@ -19,9 +19,26 @@ class FixingController extends Controller
 {
     use ApiResponses;
 
-    public function index()
+    public function index(Request $request)
     {
-        $fixings = Fixing::with('fournisseur', 'devise', 'fixingBarres', 'createdBy', 'updatedBy')->orderBy('created_at', 'desc')->get();
+        $query = Fixing::with('fournisseur', 'devise', 'fixingBarres', 'createdBy', 'updatedBy');
+
+        if ($request->filled('fournisseur_id')) {
+            $query->whereHas('fournisseur', function ($q) use ($request) {
+                $q->where('id', $request->fournisseur_id);
+            });
+        }
+
+        // 🔍 Filtrer entre deux dates (date_pointage)
+        if ($request->filled('date_debut') && $request->filled('date_fin')) {
+            $query->whereBetween('created_at', [$request->date_debut, $request->date_fin]);
+        } elseif ($request->filled('date_debut')) {
+            $query->whereDate('created_at', '>=', $request->date_debut);
+        } elseif ($request->filled('date_fin')) {
+            $query->whereDate('created_at', '<=', $request->date_fin);
+        }
+
+        $fixings = $query->orderBy('created_at', 'desc')->get();
 
         return $this->successResponse(FixingResource::collection($fixings), 'Liste de tous les fixings bien chargé.');
     }
@@ -62,15 +79,6 @@ class FixingController extends Controller
         DB::beginTransaction();
 
         try {
-            $devise = Devise::find($fields['devise_id']);
-
-            if (Str::upper($devise->symbole) == 'USD') {
-                $bourse = $fields['bourse'] ?? 0;
-                $discount = $fields['discount'] ?? 0;
-
-                $fields['unit_price'] = (float) number_format(($bourse / 34) - $discount, 2);
-            }
-
             $fixing = Fixing::create($fields);
 
             if (!empty($request->barres)) {
