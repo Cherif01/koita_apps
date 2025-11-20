@@ -17,7 +17,7 @@ class FixingClient extends Model
     protected $fillable = [
         'id_client',
         'id_devise',
-        'id_init_livraison',
+        // 'id_init_livraison',  // supprimé dans migration
         'reference',
         'poids_pro',
         'carrat_moyen',
@@ -57,11 +57,6 @@ class FixingClient extends Model
     // 🔹 SCOPES
     // ===============================
 
-    public function livraison()
-    {
-        return $this->belongsTo(InitLivraison::class, 'id_init_livraison');
-    }
-
     public function scopeVendus($query)
     {
         return $query->where('status', 'vendu');
@@ -73,30 +68,83 @@ class FixingClient extends Model
     }
 
     // ===============================
-    // 🔹 LOGIQUE AUTOMATIQUE : Référence + Statut
+    // 🔥 LOGIQUE AUTOMATIQUE :
+    //    Référence + Statut Fixing
     // ===============================
 
     protected static function booted()
     {
-        // 🔸 Génération automatique de la référence à la création
         static::creating(function ($fixing) {
+
+            // =======================================================
+            // 📌 Génération automatique de la référence
+            // =======================================================
             $lastId            = self::withTrashed()->max('id') ?? 0;
             $fixing->reference = 'FIX-' . str_pad($lastId + 1, 5, '0', STR_PAD_LEFT);
 
-            // 🔹 Déterminer le statut automatiquement
-            if (is_null($fixing->prix_unitaire) || is_null($fixing->discompte)) {
-                $fixing->status = 'provisoire';
-            } else {
-                $fixing->status = 'vendu';
+            // =======================================================
+            // 📌 Détermination automatique du statut
+            // =======================================================
+
+            $client = Client::find($fixing->id_client);
+
+            if ($client) {
+
+                // =============================
+                // 🔵 CLIENT EXTRA
+                // statut dépend de bourse
+                // =============================
+                if (strtolower($client->type_client) === 'extrat') {
+
+                    if (is_null($fixing->bourse)) {
+                        $fixing->status = 'provisoire';
+                    } else {
+                        $fixing->status = 'vendu';
+                    }
+
+                } else {
+
+                    // =============================
+                    // 🟢 CLIENT LOCAL
+                    // statut dépend de discompte
+                    // =============================
+                    if (is_null($fixing->discompte)) {
+                        $fixing->status = 'provisoire';
+                    } else {
+                        $fixing->status = 'vendu';
+                    }
+                }
             }
         });
 
-        // 🔸 Mise à jour du statut lors des modifications
         static::saving(function ($fixing) {
-            if (is_null($fixing->prix_unitaire) || is_null($fixing->discompte)) {
-                $fixing->status = 'provisoire';
-            } else {
-                $fixing->status = 'vendu';
+
+            $client = Client::find($fixing->id_client);
+
+            if ($client) {
+
+                // =============================
+                // 🔵 CLIENT EXTRA
+                // =============================
+                if (strtolower($client->type_client) === 'extrat') {
+
+                    if (is_null($fixing->bourse)) {
+                        $fixing->status = 'provisoire';
+                    } else {
+                        $fixing->status = 'vendu';
+                    }
+
+                } else {
+
+                    // =============================
+                    // 🟢 CLIENT LOCAL
+                    // =============================
+                    if (is_null($fixing->discompte)) {
+                        $fixing->status = 'provisoire';
+                    } else {
+                        $fixing->status = 'vendu';
+                    }
+                }
             }
         });
     }

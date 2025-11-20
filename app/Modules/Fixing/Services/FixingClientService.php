@@ -1,9 +1,6 @@
 <?php
-
 namespace App\Modules\Fixing\Services;
 
-use App\Modules\Comptabilite\Models\OperationClient;
-use App\Modules\Comptabilite\Models\OperationDivers;
 use App\Modules\Fixing\Models\FixingClient;
 use App\Modules\Fixing\Resources\FixingClientResource;
 use Carbon\Carbon;
@@ -33,7 +30,7 @@ class FixingClientService
                 'status'  => 200,
                 'message' => 'Fixing client créé avec succès.',
                 'data'    => new FixingClientResource($fixing),
-                
+
             ]);
         } catch (Exception $e) {
             DB::rollBack();
@@ -125,7 +122,7 @@ class FixingClientService
             return response()->json([
                 'status'  => 200,
                 'message' => 'Fixing client mis à jour avec succès.',
-               
+
             ]);
         } catch (Exception $e) {
             DB::rollBack();
@@ -176,57 +173,70 @@ class FixingClientService
     /**
      * 📊 Calculer la facture d’un fixing
      */
-   public function calculerFacture(int $id_fixing): array
-{
-    $fixing = FixingClient::with('client')->find($id_fixing);
+    public function calculerFacture(int $id_fixing): array
+    {
+        $fixing = FixingClient::with('client')->find($id_fixing);
 
-    if (! $fixing) {
+        if (! $fixing) {
+            return [
+                'status'  => 404,
+                'message' => "Fixing introuvable avec l’ID {$id_fixing}.",
+            ];
+        }
+
+        $poidsPro     = (float) $fixing->poids_pro;
+        $bourse       = (float) $fixing->bourse;
+        $prixUnitaire = (float) $fixing->prix_unitaire; // sera recalculé
+        $discompte    = (float) ($fixing->discompte ?? 0);
+
+        $typeClient = strtolower($fixing->client?->type_client ?? 'local');
+
+        // Pureté totale = poids_pro
+        $pureteTotale = $poidsPro;
+
+        // ================================
+        // 🔥 Prix unitaire selon type client
+        // ================================
+
+        if ($typeClient === 'local') {
+
+            // PU = (bourse / 34) - discompte
+            $prixUnitaire = ($bourse / 34) - $discompte;
+
+        } elseif ($typeClient === 'extrat') {
+
+            // PU = bourse / 31.10347
+            $prixUnitaire = $bourse / 31.10347;
+        }
+
+        // ================================
+        // 🔥 Total facture si fixing vendu
+        // ================================
+        if ($fixing->status === 'vendu') {
+            $totalFacture = $pureteTotale * $prixUnitaire;
+        } else {
+            $totalFacture = 0;
+        }
+
         return [
-            'status'  => 404,
-            'message' => "Fixing introuvable avec l’ID {$id_fixing}.",
+            'status'        => 200,
+            'id_fixing'     => $fixing->id,
+            'status_fixing' => $fixing->status,
+            'type_client'   => $typeClient,
+
+            'poids_total'   => round($poidsPro, 2),
+            'bourse'        => round($bourse, 2),
+            'discompte'     => round($discompte, 2),
+            'purete_totale' => round($pureteTotale, 2),
+
+            'prix_unitaire' => round($prixUnitaire, 2),
+            'total_facture' => round($totalFacture, 2),
         ];
     }
-
-    $poidsPro   = (float) $fixing->poids_pro;
-    $bourse     = (float) $fixing->bourse;
-    $prixUnitaire     = (float) $fixing->prix_unitaire;
-    $discompte  = (float) ($fixing->discompte ?? 0);
-    $typeClient = $fixing->client?->type_client ?? 'local';
-
-    // 💎 Pureté (ici on ne prend plus le carat)
-    $pureteTotale = $poidsPro ;
-
-    // 💰 Si le fixing est vendu → calcul normal
-    if ($fixing->status === 'vendu') {
-       
-
-        $totalFacture = $pureteTotale * $prixUnitaire;
-    } 
-    // ⚠️ Sinon (provisoire) → pas de calcul, mais on garde les mêmes clés
-    else {
-        $prixUnitaire = 0;
-        $totalFacture = 0;
-    }
-
-    return [
-        'status'        => 200,
-        'id_fixing'     => $fixing->id,
-        'status_fixing' => $fixing->status,
-        'type_client'   => $typeClient,
-        'poids_total'   => round($poidsPro, 2),
-        'bourse'        => round($bourse, 2),
-        'discompte'     => round($discompte, 2),
-        'purete_totale' => round($pureteTotale, 2),
-        'prix_unitaire' => round($prixUnitaire, 2),
-        'total_facture' => round($totalFacture, 2),
-    ];
-}
-
 
     /**
      * ⚙️ Tronquer un nombre sans arrondir
      */
-   
 
     /**
      * 📈 Statistiques globales des fixings
@@ -263,12 +273,12 @@ class FixingClientService
      */
     public function fixingsClientSemaine(): array
     {
-        $jours = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
-        $today = Carbon::today();
+        $jours  = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
+        $today  = Carbon::today();
         $result = [];
 
         for ($i = 0; $i < 7; $i++) {
-            $jour = $today->startOfWeek()->addDays($i);
+            $jour    = $today->startOfWeek()->addDays($i);
             $fixings = FixingClient::whereDate('created_at', $jour)->get();
 
             $total = 0;
