@@ -297,7 +297,7 @@ class ClientService
      * 🔹 Relevé complet (Fixings + Opérations)
      */
 
-    public function getReleveClientPeriode1(int $id_client, string $date_debut, string $date_fin): array
+    public function getReleveClientPeriode1(int $id_client, string $date_debut, string $date_fin)
     {
 
         logger()->info('DATES', [
@@ -499,14 +499,15 @@ class ClientService
         // ==========================================================
         // 🔹 7. Réponse JSON formatée
         // ==========================================================
-        return [
+        return response()->json([
             'status'  => 200,
             'message' => 'Relevé combiné généré avec succès.',
             'data'    => [
                 'operations_financieres' => (object) $grouped,
                 'stock_final'            => round($stockGlobal, 3),
             ],
-        ];
+        ]);
+
     }
 
     public function getReleveClient(int $id_client): array
