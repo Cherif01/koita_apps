@@ -194,46 +194,6 @@ class ClientService
         }
     }
 
-    // public function calculerSoldeClient(int $id_client): array
-    // {
-    //     // 🔹 Récupérer toutes les devises actives
-    //     $devises = Devise::select('id', 'symbole')->get();
-
-    //     $soldes = [];
-
-    //     foreach ($devises as $devise) {
-    //         // 🔸 Convertir le symbole en minuscule
-    //         $symbole = strtolower($devise->symbole);
-
-    //         // 🔸 Calcul du total par nature (1 = entrée, 0 = sortie)
-    //         $getTotalParNature = function (int $nature) use ($id_client, $symbole) {
-    //             return OperationClient::where('id_client', $id_client)
-    //                 ->whereHas('typeOperation', fn($q) => $q->where('nature', $nature))
-    //                 ->whereHas('devise', fn($q) => $q->whereRaw('LOWER(symbole) = ?', [$symbole]))
-    //                 ->sum('montant');
-    //         };
-
-    //         $entrees = $getTotalParNature(1);
-    //         $sorties = $getTotalParNature(0);
-
-    //         // 🔹 Ajouter les factures (fixings)
-    //         $fixings = FixingClient::with('devise')
-    //             ->where('id_client', $id_client)
-    //             ->whereHas('devise', fn($q) => $q->whereRaw('LOWER(symbole) = ?', [$symbole]))
-    //             ->get();
-
-    //         foreach ($fixings as $fixing) {
-    //             $calcul  = app(FixingClientService::class)->calculerFacture($fixing->id);
-    //             $montant = $calcul['total_facture'] ?? 0;
-    //             $sorties += $montant;
-    //         }
-
-    //         // 🔹 Stocker le solde par devise (clé en minuscule)
-    //         $soldes[$symbole] = round($entrees - $sorties, 2);
-    //     }
-
-    //     return $soldes;
-    // }
     public function calculerSoldeClient(int $id_client): array
     {
         // 🔹 Récupérer toutes les devises actives
@@ -299,11 +259,6 @@ class ClientService
 
     public function getReleveClientPeriode1(int $id_client, string $date_debut, string $date_fin)
     {
-
-        logger()->info('DATES', [
-            'debut' => $date_debut,
-            'fin'   => $date_fin,
-        ]);
 
         // 🔹 Récupérer toutes les devises actives
         $devises = Devise::pluck('symbole')
@@ -382,7 +337,7 @@ class ClientService
                     'solde_apres'         => 0.0,
                     'solde_apres_fixing'  => 0.0,
                     'reference_fixing'    => 'FIX-' . str_pad($fix->id, 5, '0', STR_PAD_LEFT),
-                    'libelle_fixing'      => "Vente or : {$poids} g à {$prixU} /g Discompte:{$discompte}, Bourse: {$bourse}",
+                    'libelle_fixing'      => "Fixing  or : {$poids} g à {$prixU} /g , Bourse: {$bourse}",
                     'poids_entree'  => 0.0,
                     'poids_sortie'  => $poids,
                     'stock_avant'   => 0.0,
@@ -406,6 +361,7 @@ class ClientService
                     ->get()
                     ->sum(function ($fondation) {
 
+                        // Choix du poids + carat (Dubai si existant)
                         $poids = ($fondation->poids_dubai > 0)
                             ? (float) $fondation->poids_dubai
                             : (float) $fondation->poids_fondu;
@@ -414,31 +370,46 @@ class ClientService
                             ? (float) $fondation->carrat_dubai
                             : (float) $fondation->carrat_fondu;
 
-                        return ($poids * $carrat) / 24;
+                        // 👉 ROUND SUR CHAQUE PRODUIT
+                        return round(($poids * $carrat) / 24, 2);
                     });
 
-                $poids_entree = round($purete_totale, 2);
+                $purete_locale_totale = Fondation::whereHas('expedition', function ($q) use ($livraison) {
+                    $q->where('id_init_livraison', $livraison->id);
+                })
+                    ->get()
+                    ->sum(function ($fondation) {
+
+                        // 🔥 Round à chaque produit
+                        return round(
+                            ($fondation->poids_fondu * $fondation->carrat_fondu) / 24,
+                            2
+                        );
+                    });
+
+                $poids_entree = ($purete_totale);
 
                 return [
                     'type'                => 'livraison',
                     'date'                => $livraison->created_at?->format('Y-m-d H:i:s'),
                     'reference_operation' => $livraison->reference ?? null,
-                    'libelle_operation'   => 'Livraison d’or',
-                    'banque'              => null,
-                    'numero_compte'       => null,
-                    'devise'              => 'usd',
-                    'debit'               => 0.0,
-                    'credit'              => 0.0,
-                    'solde_avant'         => 0.0,
-                    'solde_apres'         => 0.0,
-                    'solde_apres_fixing'  => 0.0,
-                    'reference_fixing'    => null,
-                    'libelle_fixing'      => null,
-                    'poids_entree'        => $poids_entree,
-                    'poids_sortie'        => 0.0,
-                    'stock_avant'         => 0.0,
-                    'stock_apres'         => 0.0,
-                    'total_facture'       => 0.0,
+                    'libelle_operation'   => "Livraison d’or de poids : {$purete_locale_totale}",
+
+                    'banque'             => null,
+                    'numero_compte'      => null,
+                    'devise'             => 'usd',
+                    'debit'              => 0.0,
+                    'credit'             => 0.0,
+                    'solde_avant'        => 0.0,
+                    'solde_apres'        => 0.0,
+                    'solde_apres_fixing' => 0.0,
+                    'reference_fixing'   => null,
+                    'libelle_fixing'     => null,
+                    'poids_entree'       => $poids_entree,
+                    'poids_sortie'       => 0.0,
+                    'stock_avant'        => 0.0,
+                    'stock_apres'        => 0.0,
+                    'total_facture'      => 0.0,
                 ];
             });
 
@@ -580,11 +551,11 @@ class ClientService
                     'solde_apres'         => 0.0,
                     'solde_apres_fixing'  => 0.0,
                     'reference_fixing'    => 'FIX-' . str_pad($fix->id, 5, '0', STR_PAD_LEFT),
-                    'libelle_fixing'      => "Vente or : {$poids} g à {$prixU} /g Discompte:{$discompte}, Bourse: {$bourse}",
-                    'poids_entree' => 0.0,
-                    'poids_sortie' => $poids,
-                    'stock_avant' => 0.0,
-                    'stock_apres' => 0.0,
+                    'libelle_fixing'      => "Fixing : {$poids} g à {$prixU} /g  Bourse: {$bourse}",
+                    'poids_entree'  => 0.0,
+                    'poids_sortie'  => $poids,
+                    'stock_avant'   => 0.0,
+                    'stock_apres'   => 0.0,
                     'total_facture' => $total,
                 ];
             });
@@ -600,6 +571,7 @@ class ClientService
                     ->get()
                     ->sum(function ($fondation) {
 
+                        // Choix du poids + carat (Dubai si existant)
                         $poids = ($fondation->poids_dubai > 0)
                             ? (float) $fondation->poids_dubai
                             : (float) $fondation->poids_fondu;
@@ -608,31 +580,46 @@ class ClientService
                             ? (float) $fondation->carrat_dubai
                             : (float) $fondation->carrat_fondu;
 
-                        return ($poids * $carrat) / 24;
+                        // 👉 ROUND SUR CHAQUE PRODUIT
+                        return round(($poids * $carrat) / 24, 2);
+                    });
+                $purete_locale_totale = Fondation::whereHas('expedition', function ($q) use ($livraison) {
+                    $q->where('id_init_livraison', $livraison->id);
+                })
+                    ->get()
+                    ->sum(function ($fondation) {
+
+                        // 🔥 Round à chaque produit
+                        return round(
+                            ($fondation->poids_fondu * $fondation->carrat_fondu) / 24,
+                            2
+                        );
                     });
 
-                $poids_entree = round($purete_totale, 2);
+                //'libelle_operation'   => "Livraison d’or de poids : {$purete_locale_totale}",
+
+                $poids_entree = ($purete_totale);
 
                 return [
                     'type'                => 'livraison',
                     'date'                => $livraison->created_at?->format('Y-m-d H:i:s'),
                     'reference_operation' => $livraison->reference ?? null,
-                    'libelle_operation'   => 'Livraison d’or',
-                    'banque'              => null,
-                    'numero_compte'       => null,
-                    'devise'              => 'usd',
-                    'debit'               => 0.0,
-                    'credit'              => 0.0,
-                    'solde_avant'         => 0.0,
-                    'solde_apres'         => 0.0,
-                    'solde_apres_fixing'  => 0.0,
-                    'reference_fixing'    => null,
-                    'libelle_fixing'      => null,
-                    'poids_entree'        => $poids_entree,
-                    'poids_sortie'        => 0.0,
-                    'stock_avant'         => 0.0,
-                    'stock_apres'         => 0.0,
-                    'total_facture'       => 0.0,
+                    'libelle_operation'   => "Livraison d’or de poids : {$purete_locale_totale}",
+                    'banque'             => null,
+                    'numero_compte'      => null,
+                    'devise'             => 'usd',
+                    'debit'              => 0.0,
+                    'credit'             => 0.0,
+                    'solde_avant'        => 0.0,
+                    'solde_apres'        => 0.0,
+                    'solde_apres_fixing' => 0.0,
+                    'reference_fixing'   => null,
+                    'libelle_fixing'     => null,
+                    'poids_entree'       => $poids_entree,
+                    'poids_sortie'       => 0.0,
+                    'stock_avant'        => 0.0,
+                    'stock_apres'        => 0.0,
+                    'total_facture'      => 0.0,
                 ];
             });
 
@@ -709,7 +696,22 @@ class ClientService
         $totalLivre = Fondation::whereHas('expedition', function ($q) use ($livraisonIds) {
             $q->whereIn('id_init_livraison', $livraisonIds);
         })
-            ->sum('poids_fondu');
+            ->get()
+            ->sum(function ($fondation) {
+
+                // 🔥 Poids : Dubai prioritaire
+                $poids = ($fondation->poids_dubai > 0)
+                    ? (float) $fondation->poids_dubai
+                    : (float) $fondation->poids_fondu;
+
+                // 🔥 Carat : Dubai prioritaire
+                $carrat = ($fondation->carrat_dubai > 0)
+                    ? (float) $fondation->carrat_dubai
+                    : (float) $fondation->carrat_fondu;
+
+                // 🔥 Pureté locale/dubai arrondie INDIVIDUELLEMENT
+                return round(($poids * $carrat) / 24, 2);
+            });
 
         // 🔹 Total fixé : somme des poids_pro des fixings vendus du client
         $totalFixing = FixingClient::where('id_client', $id_client)
