@@ -1,0 +1,94 @@
+<?php
+namespace App\Modules\Fixing\Models;
+
+use App\Modules\Administration\Models\User;
+use App\Modules\Fondation\Models\Fondation;
+use App\Modules\Settings\Models\Client;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
+
+class InitLivraison extends Model
+{
+    use HasFactory, SoftDeletes;
+
+    protected $table = 'init_livraisons';
+
+    protected $fillable = [
+        'reference',
+        'id_client',
+        'commentaire',
+        'statut',
+        'created_by',
+        'modify_by',
+    ];
+
+    // ==============================
+    // 🔹 RELATIONS
+    // ==============================
+
+    /**
+     * Client concerné par la livraison
+     */
+    public function client()
+    {
+        return $this->belongsTo(Client::class, 'id_client');
+    }
+
+    /**
+     * Utilisateur ayant créé la livraison
+     */
+    public function createur()
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
+    /**
+     * Utilisateur ayant modifié la livraison
+     */
+    public function modificateur()
+    {
+        return $this->belongsTo(User::class, 'modify_by');
+    }
+
+    /**
+     * Expéditions liées à cette livraison
+     */
+    public function expeditions()
+    {
+        return $this->hasMany(Expedition::class, 'id_init_livraison');
+    }
+    public function fondations()
+    {
+        return $this->hasManyThrough(
+            Fondation::class,
+            Expedition::class,
+            'id_init_livraison',
+            'id',
+            'id',
+            'id_barre_fondu'
+        );
+    }
+
+    public function fixings()
+    {
+        return $this->hasMany(FixingClient::class, 'id_init_livraison');
+    }
+
+    // ==============================
+    // 🔹 GÉNÉRATION AUTO DE LA RÉFÉRENCE UNIQUE
+    // ==============================
+
+    protected static function booted()
+    {
+        /**
+         * Après création, on génère une référence unique à partir de l'ID réel.
+         */
+        static::created(function ($initLivraison) {
+            if (empty($initLivraison->reference)) {
+                $reference = 'LIV-' . now()->format('Ymd') . '-' . str_pad($initLivraison->id, 4, '0', STR_PAD_LEFT);
+                $initLivraison->updateQuietly(['reference' => $reference]);
+            }
+        });
+    }
+}
